@@ -217,15 +217,44 @@ st.markdown("""
         height: 14px;
     }
     
-    /* Tooltip content styling */
-    [data-testid="stTooltipContent"] {
+    /* Tooltip content styling - comprehensive fix */
+    [data-testid="stTooltipContent"],
+    [data-testid="stTooltipContent"] *,
+    [data-baseweb="tooltip"] [data-testid="stMarkdownContainer"],
+    [data-baseweb="tooltip"] [data-testid="stMarkdownContainer"] p,
+    [data-baseweb="tooltip"] p,
+    [data-baseweb="tooltip"] span,
+    [data-baseweb="tooltip"] div,
+    div[data-baseweb="popover"] div,
+    div[data-baseweb="popover"] p,
+    div[data-baseweb="popover"] span {
         background-color: #1f2937 !important;
         color: white !important;
         border-radius: 8px !important;
-        padding: 0.75rem 1rem !important;
         font-size: 0.85rem !important;
+    }
+    
+    [data-testid="stTooltipContent"] {
+        padding: 0.75rem 1rem !important;
         max-width: 300px !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    }
+    
+    /* BaseWeb tooltip override */
+    [data-baseweb="tooltip"] {
+        background-color: #1f2937 !important;
+    }
+    
+    [data-baseweb="tooltip"] div[data-testid="stMarkdownContainer"] p {
+        color: white !important;
+        margin: 0 !important;
+    }
+    
+    /* Popover body for help text */
+    div[role="tooltip"],
+    div[role="tooltip"] * {
+        background-color: #1f2937 !important;
+        color: white !important;
     }
     
     /* Slider help icons */
