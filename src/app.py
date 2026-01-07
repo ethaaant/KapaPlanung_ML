@@ -218,43 +218,63 @@ st.markdown("""
     }
     
     /* Tooltip content styling - comprehensive fix */
-    [data-testid="stTooltipContent"],
-    [data-testid="stTooltipContent"] *,
-    [data-baseweb="tooltip"] [data-testid="stMarkdownContainer"],
-    [data-baseweb="tooltip"] [data-testid="stMarkdownContainer"] p,
-    [data-baseweb="tooltip"] p,
-    [data-baseweb="tooltip"] span,
-    [data-baseweb="tooltip"] div,
-    div[data-baseweb="popover"] div,
-    div[data-baseweb="popover"] p,
-    div[data-baseweb="popover"] span {
+    [data-testid="stTooltipContent"] {
         background-color: #1f2937 !important;
         color: white !important;
         border-radius: 8px !important;
+        padding: 8px 12px !important;
         font-size: 0.85rem !important;
+        max-width: 280px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        min-height: auto !important;
+        line-height: 1.4 !important;
     }
     
-    [data-testid="stTooltipContent"] {
-        padding: 0.75rem 1rem !important;
-        max-width: 300px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-    }
-    
-    /* BaseWeb tooltip override */
-    [data-baseweb="tooltip"] {
-        background-color: #1f2937 !important;
-    }
-    
-    [data-baseweb="tooltip"] div[data-testid="stMarkdownContainer"] p {
+    [data-testid="stTooltipContent"] p,
+    [data-testid="stTooltipContent"] span,
+    [data-testid="stTooltipContent"] div {
         color: white !important;
         margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        line-height: 1.4 !important;
     }
     
-    /* Popover body for help text */
-    div[role="tooltip"],
-    div[role="tooltip"] * {
+    /* BaseWeb tooltip body */
+    [data-baseweb="tooltip"] {
+        background-color: #1f2937 !important;
+        border-radius: 8px !important;
+        padding: 0 !important;
+    }
+    
+    [data-baseweb="tooltip"] > div {
+        background-color: #1f2937 !important;
+        padding: 8px 12px !important;
+    }
+    
+    /* Markdown inside tooltip */
+    [data-testid="stTooltipContent"] [data-testid="stMarkdownContainer"],
+    [data-testid="stTooltipContent"] [data-testid="stMarkdownContainer"] p {
+        color: white !important;
+        margin: 0 !important;
+        background: transparent !important;
+    }
+    
+    /* Role tooltip */
+    div[role="tooltip"] {
         background-color: #1f2937 !important;
         color: white !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+    }
+    
+    div[role="tooltip"] * {
+        color: white !important;
+        background: transparent !important;
     }
     
     /* Slider help icons */
