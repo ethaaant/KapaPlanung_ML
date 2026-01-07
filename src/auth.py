@@ -375,6 +375,8 @@ def logout():
         "outbound_data",
         # Scenario analyzer
         "scenario_analyzer",
+        # Business metrics
+        "business_metrics",
     }
     
     # Preserve important data

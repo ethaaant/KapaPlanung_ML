@@ -652,7 +652,8 @@ def render_top_bar():
 
 def compact_config():
     """Render compact inline configuration panel."""
-    with st.expander("⚙️ **Configuration** — Click to adjust capacity planning parameters", expanded=False):
+    # Capacity Planning Config
+    with st.expander("⚙️ **Capacity Planning** — Service levels & handling times", expanded=False):
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
@@ -714,6 +715,122 @@ def compact_config():
                 step=0.5,
                 help="Avg handle time for outbound"
             )
+    
+    # Business Metrics Config - Monthly Values
+    with st.expander("📊 **Business Metrics** — Monthly leads & growth targets", expanded=False):
+        st.markdown("##### Monthly Business Targets")
+        st.caption("Set targets for each month. Contact Rate = Leads / Total Contacts (Calls + Emails + Outbound)")
+        
+        # Initialize business metrics in session state if not present
+        if "business_metrics" not in st.session_state:
+            st.session_state.business_metrics = {}
+        
+        # Get current year and create month options
+        current_year = datetime.now().year
+        months = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ]
+        
+        # Year selector
+        col_year, col_spacer = st.columns([1, 3])
+        with col_year:
+            selected_year = st.selectbox(
+                "Year",
+                options=[current_year, current_year + 1],
+                index=0,
+                help="Select year for business metrics"
+            )
+        
+        # Create tabs for each month
+        month_tabs = st.tabs([m[:3] for m in months])
+        
+        for i, (month_tab, month_name) in enumerate(zip(month_tabs, months)):
+            month_key = f"{selected_year}-{i+1:02d}"
+            
+            with month_tab:
+                # Get existing values or defaults
+                existing = st.session_state.business_metrics.get(month_key, {})
+                
+                col_a, col_b, col_c = st.columns(3)
+                
+                with col_a:
+                    leads = st.number_input(
+                        "Created Leads",
+                        min_value=0,
+                        max_value=100000,
+                        value=existing.get("leads", 0),
+                        step=100,
+                        key=f"leads_{month_key}",
+                        help=f"Number of leads created in {month_name}"
+                    )
+                
+                with col_b:
+                    growth_pct = st.number_input(
+                        "Expected Growth %",
+                        min_value=-50.0,
+                        max_value=200.0,
+                        value=existing.get("growth_pct", 0.0),
+                        step=1.0,
+                        key=f"growth_{month_key}",
+                        help="Growth adjustment on top of leads forecast"
+                    )
+                
+                with col_c:
+                    contact_rate = st.number_input(
+                        "Contact Rate %",
+                        min_value=0.0,
+                        max_value=100.0,
+                        value=existing.get("contact_rate", 0.0),
+                        step=0.5,
+                        key=f"contact_rate_{month_key}",
+                        help="Leads / Total Contacts × 100"
+                    )
+                
+                # Calculate adjusted leads
+                adjusted_leads = int(leads * (1 + growth_pct / 100))
+                if leads > 0:
+                    st.caption(f"📈 Adjusted Leads (with growth): **{adjusted_leads:,}**")
+                
+                # Store in session state
+                st.session_state.business_metrics[month_key] = {
+                    "leads": leads,
+                    "growth_pct": growth_pct,
+                    "contact_rate": contact_rate,
+                    "adjusted_leads": adjusted_leads
+                }
+        
+        # Summary row
+        st.markdown("---")
+        st.markdown("##### Annual Summary")
+        
+        total_leads = sum(
+            m.get("leads", 0) 
+            for k, m in st.session_state.business_metrics.items() 
+            if k.startswith(str(selected_year))
+        )
+        total_adjusted = sum(
+            m.get("adjusted_leads", 0) 
+            for k, m in st.session_state.business_metrics.items() 
+            if k.startswith(str(selected_year))
+        )
+        avg_contact_rate = np.mean([
+            m.get("contact_rate", 0) 
+            for k, m in st.session_state.business_metrics.items() 
+            if k.startswith(str(selected_year)) and m.get("contact_rate", 0) > 0
+        ]) if any(
+            m.get("contact_rate", 0) > 0 
+            for k, m in st.session_state.business_metrics.items() 
+            if k.startswith(str(selected_year))
+        ) else 0
+        
+        sum_col1, sum_col2, sum_col3 = st.columns(3)
+        with sum_col1:
+            st.metric("Total Leads", f"{total_leads:,}")
+        with sum_col2:
+            st.metric("Adjusted Leads", f"{total_adjusted:,}")
+        with sum_col3:
+            st.metric("Avg Contact Rate", f"{avg_contact_rate:.1f}%")
     
     service_level = service_level_pct / 100.0
     shrinkage = shrinkage_pct / 100.0
