@@ -364,6 +364,10 @@ class ModelManager:
                 result[model_id] = active
         return result
     
+    def list_all_models(self) -> Dict[str, List[ModelMetadata]]:
+        """List all models with all their versions."""
+        return {model_id: versions for model_id, versions in self.registry.items() if versions}
+    
     def model_exists(self, model_id: str) -> bool:
         """Check if a model exists."""
         return model_id in self.registry and len(self.registry[model_id]) > 0

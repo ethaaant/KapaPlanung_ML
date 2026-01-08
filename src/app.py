@@ -26,6 +26,7 @@ from src.data.loader import DataLoader, create_sample_data
 from src.data.preprocessor import Preprocessor
 from src.models.forecaster import WorkloadForecaster
 from src.models.capacity import CapacityPlanner
+from src.models.model_manager import ModelManager, ModelMetadata
 
 # Try to import Prophet forecaster
 try:
@@ -627,6 +628,22 @@ def init_session_state():
         st.session_state.forecast_df = None
     if "staffing_plan" not in st.session_state:
         st.session_state.staffing_plan = None
+    # Model management
+    if "model_source" not in st.session_state:
+        st.session_state.model_source = "none"  # "none", "trained", "loaded"
+    if "model_version" not in st.session_state:
+        st.session_state.model_version = None
+    if "model_metadata" not in st.session_state:
+        st.session_state.model_metadata = None
+    # Forecast adjustment factors
+    if "adjustment_factors" not in st.session_state:
+        st.session_state.adjustment_factors = {
+            "call_volume": 0,
+            "email_count": 0,
+            "outbound_ook": 0,
+            "outbound_omk": 0,
+            "outbound_nb": 0
+        }
 
 
 def render_top_bar():
@@ -1056,16 +1073,130 @@ def data_exploration_section():
 
 
 def training_section():
-    """Render model training section."""
-    if not st.session_state.data_loaded:
-        st.info("👆 Please load data first")
+    """Render model training section with Load/Train/Save capabilities."""
+    st.markdown("## 🧠 Model Management")
+    
+    # Initialize model manager
+    model_manager = ModelManager(str(MODELS_DIR))
+    
+    # Show current model status
+    _render_model_status()
+    
+    # Create tabs for Train New vs Load Existing
+    train_tab, load_tab = st.tabs(["🚀 Train New Model", "📂 Load Saved Model"])
+    
+    with load_tab:
+        _render_load_model_panel(model_manager)
+    
+    with train_tab:
+        _render_train_model_panel(model_manager)
+
+
+def _render_model_status():
+    """Display current model status indicator."""
+    source = st.session_state.get("model_source", "none")
+    version = st.session_state.get("model_version")
+    model_type = st.session_state.get("model_type", "None")
+    
+    if source == "none" or not st.session_state.get("model_trained", False):
+        st.warning("⚠️ **No model loaded.** Train a new model or load a saved one to generate forecasts.")
+    elif source == "loaded":
+        st.success(f"✅ **Model Loaded:** {model_type} (v{version}) — Ready for forecasting")
+    elif source == "trained":
+        st.success(f"✅ **Model Trained:** {model_type} — Ready for forecasting (unsaved)")
+        st.caption("💡 Save your model to reuse it without retraining.")
+
+
+def _render_load_model_panel(model_manager: ModelManager):
+    """Render the Load Model panel."""
+    st.markdown("### Load Saved Model")
+    st.caption("Load a previously trained model to generate forecasts without retraining.")
+    
+    # Get available models
+    all_models = model_manager.list_all_models()
+    
+    if not all_models:
+        st.info("📭 No saved models found. Train and save a model first.")
         return
     
-    st.markdown("## 🧠 Model Training")
+    # Model selector
+    model_ids = list(all_models.keys())
+    selected_model_id = st.selectbox(
+        "Select Model",
+        model_ids,
+        format_func=lambda x: f"{x} ({len(all_models[x])} versions)",
+        help="Choose which model to load"
+    )
+    
+    if selected_model_id:
+        versions = all_models[selected_model_id]
+        
+        # Version selector
+        version_options = [(v.version, v) for v in reversed(versions)]  # Latest first
+        selected_version = st.selectbox(
+            "Select Version",
+            [v[0] for v in version_options],
+            format_func=lambda v: f"v{v}" + (" (Active)" if next((x[1] for x in version_options if x[0] == v), None).is_active else ""),
+            help="Choose which version to load"
+        )
+        
+        # Get selected metadata
+        selected_metadata = next((v[1] for v in version_options if v[0] == selected_version), None)
+        
+        if selected_metadata:
+            # Display metadata
+            st.markdown("#### Model Details")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Model Type", selected_metadata.model_type)
+                st.metric("Training Samples", f"{selected_metadata.training_samples:,}")
+            with col2:
+                st.metric("Created", selected_metadata.created_at.strftime("%Y-%m-%d %H:%M"))
+                st.metric("Created By", selected_metadata.created_by)
+            with col3:
+                if selected_metadata.training_date_range[0]:
+                    st.metric("Data Range", f"{selected_metadata.training_date_range[0][:10]} to {selected_metadata.training_date_range[1][:10]}")
+                if selected_metadata.metrics:
+                    first_target = list(selected_metadata.metrics.keys())[0]
+                    if "rmse" in selected_metadata.metrics[first_target]:
+                        st.metric("RMSE", f"{selected_metadata.metrics[first_target]['rmse']:.2f}")
+            
+            if selected_metadata.description:
+                st.info(f"📝 {selected_metadata.description}")
+            
+            # Load button
+            if st.button("📥 Load Model", type="primary", use_container_width=True):
+                with st.spinner("Loading model..."):
+                    try:
+                        loaded_model = model_manager.load_model(selected_model_id, selected_version)
+                        
+                        st.session_state.forecaster = loaded_model
+                        st.session_state.model_trained = True
+                        st.session_state.model_source = "loaded"
+                        st.session_state.model_version = selected_version
+                        st.session_state.model_type = selected_metadata.model_type
+                        st.session_state.model_metadata = selected_metadata
+                        st.session_state.training_metrics = selected_metadata.metrics
+                        
+                        st.success(f"✅ Model loaded successfully: {selected_model_id} v{selected_version}")
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"Error loading model: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
+
+
+def _render_train_model_panel(model_manager: ModelManager):
+    """Render the Train Model panel."""
+    if not st.session_state.data_loaded:
+        st.info("👆 Please load data first in the Data tab")
+        return
+    
+    st.markdown("### Train New Model")
     
     # Model selection
-    st.markdown("### Model Selection")
-    
     model_options = ["Prophet (Recommended)"]
     if not PROPHET_AVAILABLE:
         model_options = ["Gradient Boosting"]
@@ -1077,15 +1208,14 @@ def training_section():
     
     with col1:
         model_type = st.selectbox(
-            "Select Model",
+            "Select Model Type",
             model_options,
             help="Prophet is recommended for complex seasonality (daily, weekly, yearly patterns)"
         )
     
     with col2:
-        # Show model info
         if "Prophet" in model_type:
-            st.info("🔮 **Prophet**: Best for seasonal patterns, holidays, and long-term forecasts")
+            st.info("🔮 **Prophet**: Best for seasonal patterns, holidays, long-term forecasts")
         else:
             st.info("🌲 **Gradient Boosting**: Fast training, good for short-term forecasts")
     
@@ -1100,7 +1230,6 @@ def training_section():
                     ["multiplicative", "additive"],
                     help="Multiplicative: seasonal effects scale with trend. Additive: constant seasonal effects."
                 )
-                
                 yearly_seasonality = st.checkbox("Yearly Seasonality", value=True,
                     help="Capture yearly patterns (e.g., Christmas, summer)")
                 weekly_seasonality = st.checkbox("Weekly Seasonality", value=True,
@@ -1114,13 +1243,11 @@ def training_section():
                     value=0.05,
                     help="Higher = more flexible trend (may overfit)"
                 )
-                
                 daily_seasonality = st.checkbox("Daily Seasonality", value=True,
                     help="Capture hour-of-day patterns")
                 include_holidays = st.checkbox("German Holidays", value=True,
-                    help="Include German public holidays and special events (Black Friday, Christmas)")
+                    help="Include German public holidays and special events")
     else:
-        # Gradient Boosting settings
         test_days = st.slider(
             "Validation Period (days)",
             min_value=7,
@@ -1132,13 +1259,12 @@ def training_section():
     # Train button
     st.markdown("---")
     
-    if st.button("🚀 Train Model", type="primary", use_container_width=True):
+    if st.button("🚀 Train Model", type="primary", use_container_width=True, key="train_btn"):
         with st.spinner("Training models... This may take a few minutes."):
             try:
                 data = st.session_state.combined_data
                 
                 if "Prophet" in model_type and PROPHET_AVAILABLE:
-                    # Train Prophet model
                     config = ProphetConfig(
                         seasonality_mode=seasonality_mode,
                         yearly_seasonality=yearly_seasonality,
@@ -1148,27 +1274,22 @@ def training_section():
                     )
                     
                     forecaster = ProphetForecaster(config)
-                    
-                    # Determine target columns
                     target_cols = [c for c in data.columns 
                                   if c not in ['timestamp', 'date', 'hour']
                                   and pd.api.types.is_numeric_dtype(data[c])]
                     
                     metrics = forecaster.fit(data, target_columns=target_cols)
                     
-                    # Save to session state
                     st.session_state.forecaster = forecaster
                     st.session_state.model_trained = True
+                    st.session_state.model_source = "trained"
+                    st.session_state.model_version = None
                     st.session_state.training_metrics = metrics
                     st.session_state.model_type = "Prophet"
-                    
-                    # Save model
-                    forecaster.save()
                     
                     st.success("✅ Prophet model trained successfully!")
                     
                 else:
-                    # Train Gradient Boosting model (legacy)
                     preprocessor = Preprocessor()
                     feature_set = preprocessor.fit_transform(data)
                     
@@ -1179,10 +1300,10 @@ def training_section():
                     st.session_state.preprocessor = preprocessor
                     st.session_state.feature_set = feature_set
                     st.session_state.model_trained = True
+                    st.session_state.model_source = "trained"
+                    st.session_state.model_version = None
                     st.session_state.training_metrics = metrics
                     st.session_state.model_type = "GradientBoosting"
-                    
-                    forecaster.save()
                     
                     st.success("✅ Gradient Boosting model trained successfully!")
                 
@@ -1193,42 +1314,105 @@ def training_section():
                 import traceback
                 st.code(traceback.format_exc())
     
-    # Show training metrics
+    # Show training metrics and save option
     if st.session_state.model_trained and "training_metrics" in st.session_state:
-        model_name = st.session_state.get("model_type", "Unknown")
-        st.markdown(f"### Training Metrics ({model_name})")
-        
-        metrics = st.session_state.training_metrics
-        
-        # Limit columns to 4 max for display
-        n_cols = min(len(metrics), 4)
-        cols = st.columns(n_cols)
-        
-        for i, (target, m) in enumerate(metrics.items()):
-            with cols[i % n_cols]:
-                st.markdown(f"**{target.replace('_', ' ').title()}**")
-                st.metric(
-                    "RMSE", 
-                    f"{m['rmse']:.2f}",
-                    help="Root Mean Square Error: Average prediction error magnitude. Lower is better."
+        _render_training_metrics()
+        _render_save_model_panel(model_manager)
+
+
+def _render_save_model_panel(model_manager: ModelManager):
+    """Render the Save Model panel."""
+    st.markdown("---")
+    st.markdown("### 💾 Save Model")
+    
+    # Only show if model was just trained (not loaded)
+    if st.session_state.get("model_source") == "loaded":
+        st.info("ℹ️ This model was loaded from disk. No need to save again.")
+        return
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        model_name = st.text_input(
+            "Model Name",
+            value="workload_forecaster",
+            help="Identifier for this model (use underscores, no spaces)"
+        )
+        model_description = st.text_area(
+            "Description (optional)",
+            placeholder="e.g., Trained on Jan-Jun 2026 data with daily seasonality",
+            help="Add notes about this model version"
+        )
+    
+    with col2:
+        st.markdown("**Save Options**")
+        set_active = st.checkbox("Set as Active", value=True, 
+            help="Make this the default model for forecasting")
+    
+    if st.button("💾 Save Model", type="secondary", use_container_width=True):
+        with st.spinner("Saving model..."):
+            try:
+                forecaster = st.session_state.forecaster
+                data = st.session_state.get("combined_data")
+                metrics = st.session_state.get("training_metrics", {})
+                model_type = st.session_state.get("model_type", "Unknown")
+                user = get_current_user()
+                username = user.username if user else "unknown"
+                
+                # Get target columns if available
+                target_cols = []
+                if hasattr(forecaster, 'target_columns'):
+                    target_cols = forecaster.target_columns
+                
+                # Save via ModelManager
+                metadata = model_manager.save_model(
+                    model=forecaster,
+                    model_id=model_name,
+                    model_type=model_type,
+                    created_by=username,
+                    training_data=data,
+                    metrics=metrics,
+                    target_columns=target_cols,
+                    description=model_description,
+                    set_active=set_active
                 )
-                st.metric(
-                    "MAE", 
-                    f"{m['mae']:.2f}",
-                    help="Mean Absolute Error: Average absolute difference between predicted and actual values."
-                )
-                st.metric(
-                    "R²", 
-                    f"{m['r2']:.3f}",
-                    help="R-squared: Proportion of variance explained. 1.0 = perfect prediction."
-                )
-                st.metric(
-                    "MAPE", 
-                    f"{m['mape']:.1f}%",
-                    help="Mean Absolute Percentage Error. <10% excellent, 10-20% good."
-                )
-        
-        # Model-specific visualizations
+                
+                st.session_state.model_source = "loaded"  # Now it's saved
+                st.session_state.model_version = metadata.version
+                st.session_state.model_metadata = metadata
+                
+                st.success(f"✅ Model saved as **{model_name}** v{metadata.version}")
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error saving model: {str(e)}")
+                import traceback
+                st.code(traceback.format_exc())
+
+
+def _render_training_metrics():
+    """Render training metrics display."""
+    model_name = st.session_state.get("model_type", "Unknown")
+    st.markdown(f"### Training Metrics ({model_name})")
+    
+    metrics = st.session_state.training_metrics
+    
+    n_cols = min(len(metrics), 4)
+    cols = st.columns(n_cols)
+    
+    for i, (target, m) in enumerate(metrics.items()):
+        with cols[i % n_cols]:
+            st.markdown(f"**{target.replace('_', ' ').title()}**")
+            st.metric("RMSE", f"{m['rmse']:.2f}",
+                help="Root Mean Square Error: Average prediction error magnitude. Lower is better.")
+            st.metric("MAE", f"{m['mae']:.2f}",
+                help="Mean Absolute Error: Average absolute difference between predicted and actual values.")
+            st.metric("R²", f"{m['r2']:.3f}",
+                help="R-squared: Proportion of variance explained. 1.0 = perfect prediction.")
+            st.metric("MAPE", f"{m['mape']:.1f}%",
+                help="Mean Absolute Percentage Error. <10% excellent, 10-20% good.")
+    
+    # Model-specific visualizations
         if st.session_state.get("model_type") == "Prophet" and PROPHET_AVAILABLE:
             st.markdown("### 📊 Prophet Components")
             st.info("Prophet automatically decomposes your data into trend, weekly, and yearly patterns.")
@@ -1344,6 +1528,56 @@ def forecast_section(capacity_config: CapacityConfig):
     # Show date range info
     st.info(f"📅 **Forecast Period:** {forecast_start.strftime('%A, %B %d, %Y')} to {forecast_end.strftime('%A, %B %d, %Y')} ({forecast_days} days, {forecast_days * 24} hours)")
     
+    # Adjustment Factors
+    st.markdown("### 📊 Adjustment Factors")
+    with st.expander("Apply multipliers to adjust forecast (e.g., for marketing campaigns)", expanded=False):
+        st.caption("These multipliers are applied **after** the model generates the base forecast. Use positive values to increase, negative to decrease.")
+        
+        adj_col1, adj_col2, adj_col3 = st.columns(3)
+        
+        with adj_col1:
+            call_adj = st.number_input(
+                "Calls Adjustment %",
+                min_value=-50,
+                max_value=200,
+                value=st.session_state.adjustment_factors.get("call_volume", 0),
+                step=5,
+                help="e.g., +20% for expected marketing push"
+            )
+            st.session_state.adjustment_factors["call_volume"] = call_adj
+        
+        with adj_col2:
+            email_adj = st.number_input(
+                "Emails Adjustment %",
+                min_value=-50,
+                max_value=200,
+                value=st.session_state.adjustment_factors.get("email_count", 0),
+                step=5,
+                help="e.g., +30% after newsletter send"
+            )
+            st.session_state.adjustment_factors["email_count"] = email_adj
+        
+        with adj_col3:
+            outbound_adj = st.number_input(
+                "Outbound Adjustment %",
+                min_value=-50,
+                max_value=200,
+                value=st.session_state.adjustment_factors.get("outbound_ook", 0),
+                step=5,
+                help="Applies to all outbound types (OOK, OMK, NB)"
+            )
+            st.session_state.adjustment_factors["outbound_ook"] = outbound_adj
+            st.session_state.adjustment_factors["outbound_omk"] = outbound_adj
+            st.session_state.adjustment_factors["outbound_nb"] = outbound_adj
+        
+        # Show summary
+        if any(v != 0 for v in st.session_state.adjustment_factors.values()):
+            active_adjustments = [f"{k.replace('_', ' ').title()}: {v:+d}%" 
+                                  for k, v in st.session_state.adjustment_factors.items() if v != 0]
+            st.success(f"🎯 Active adjustments: {', '.join(active_adjustments)}")
+        else:
+            st.caption("No adjustments applied - using base forecast.")
+    
     # Generate button
     if st.button("📈 Generate Forecast", type="primary", use_container_width=True):
         with st.spinner(f"Generating {forecast_days}-day forecast... This may take a while."):
@@ -1390,6 +1624,28 @@ def forecast_section(capacity_config: CapacityConfig):
                     (forecast_df["timestamp"] <= pd.Timestamp(end_datetime))
                 ].reset_index(drop=True)
                 
+                # Apply adjustment factors
+                adjustments = st.session_state.adjustment_factors
+                adjustment_applied = False
+                
+                for col in forecast_df.columns:
+                    if col == "timestamp":
+                        continue
+                    
+                    # Match column to adjustment factor
+                    adj_value = 0
+                    if "call" in col.lower():
+                        adj_value = adjustments.get("call_volume", 0)
+                    elif "email" in col.lower():
+                        adj_value = adjustments.get("email_count", 0)
+                    elif "outbound" in col.lower() or "ook" in col.lower() or "omk" in col.lower() or "nb" in col.lower():
+                        adj_value = adjustments.get("outbound_ook", 0)
+                    
+                    if adj_value != 0:
+                        multiplier = 1 + (adj_value / 100)
+                        forecast_df[col] = forecast_df[col] * multiplier
+                        adjustment_applied = True
+                
                 # Reorder columns
                 cols = ["timestamp"] + [c for c in forecast_df.columns if c != "timestamp"]
                 forecast_df = forecast_df[cols]
@@ -1410,7 +1666,10 @@ def forecast_section(capacity_config: CapacityConfig):
                 if "scenario_analyzer" in st.session_state:
                     del st.session_state.scenario_analyzer
                 
-                st.success(f"✅ Generated forecast for {forecast_start} to {forecast_end} ({len(forecast_df)} hours)")
+                success_msg = f"✅ Generated forecast for {forecast_start} to {forecast_end} ({len(forecast_df)} hours)"
+                if adjustment_applied:
+                    success_msg += " — *Adjustments applied*"
+                st.success(success_msg)
                 
             except Exception as e:
                 st.error(f"Error generating forecast: {str(e)}")

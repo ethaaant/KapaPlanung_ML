@@ -377,6 +377,11 @@ def logout():
         "scenario_analyzer",
         # Business metrics
         "business_metrics",
+        # Model management
+        "model_source",
+        "model_version",
+        "model_metadata",
+        "adjustment_factors",
     }
     
     # Preserve important data
