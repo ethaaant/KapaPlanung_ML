@@ -1069,7 +1069,12 @@ def data_exploration_section():
     
     with col2:
         st.markdown("### Data Preview")
-        st.dataframe(data.head(20), use_container_width=True)
+        data_preview = data.head(20).copy()
+        numeric_cols = data_preview.select_dtypes(include=[np.number]).columns
+        st.dataframe(
+            data_preview.style.format("{:.1f}", subset=numeric_cols),
+            use_container_width=True
+        )
 
 
 def training_section():
@@ -1749,7 +1754,12 @@ def results_section():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.dataframe(daily_summary, use_container_width=True)
+            # Format numeric columns to 1 decimal place
+            numeric_cols = daily_summary.select_dtypes(include=[np.number]).columns
+            st.dataframe(
+                daily_summary.style.format("{:.1f}", subset=numeric_cols),
+                use_container_width=True
+            )
         
         with col2:
             fig3 = go.Figure()
@@ -2065,12 +2075,23 @@ def export_section():
     preview_tab1, preview_tab2 = st.tabs(["Forecast Data", "Staffing Plan"])
     
     with preview_tab1:
-        st.dataframe(forecast_df.head(20), use_container_width=True)
+        # Format numeric columns to 1 decimal place
+        forecast_display = forecast_df.head(20).copy()
+        numeric_cols = forecast_display.select_dtypes(include=[np.number]).columns
+        st.dataframe(
+            forecast_display.style.format("{:.1f}", subset=numeric_cols),
+            use_container_width=True
+        )
         st.caption(f"Showing first 20 of {len(forecast_df)} rows")
     
     with preview_tab2:
         if len(staffing_plan) > 0:
-            st.dataframe(staffing_plan.head(20), use_container_width=True)
+            staffing_display = staffing_plan.head(20).copy()
+            numeric_cols = staffing_display.select_dtypes(include=[np.number]).columns
+            st.dataframe(
+                staffing_display.style.format("{:.1f}", subset=numeric_cols),
+                use_container_width=True
+            )
             st.caption(f"Showing first 20 of {len(staffing_plan)} rows")
 
 
@@ -2648,7 +2669,12 @@ def render_scenario_analysis(capacity_config):
             
             # Comparison table
             comparison_df = analyzer.compare_scenarios()
-            st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+            numeric_cols = comparison_df.select_dtypes(include=[np.number]).columns
+            st.dataframe(
+                comparison_df.style.format("{:.1f}", subset=numeric_cols),
+                use_container_width=True, 
+                hide_index=True
+            )
             
             # Visual comparison
             fig_comparison = analyzer.plot_scenario_comparison()
