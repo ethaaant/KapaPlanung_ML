@@ -1412,64 +1412,63 @@ def _render_training_metrics():
             st.metric("MAPE", f"{m['mape']:.1f}%",
                 help="Mean Absolute Percentage Error. <10% excellent, 10-20% good.")
     
-    # Model-specific visualizations
-        if st.session_state.get("model_type") == "Prophet" and PROPHET_AVAILABLE:
-            st.markdown("### 📊 Prophet Components")
-            st.info("Prophet automatically decomposes your data into trend, weekly, and yearly patterns.")
-            
-            # Show seasonality info
-            forecaster = st.session_state.forecaster
-            
-            with st.expander("View Seasonality Patterns", expanded=False):
-                try:
-                    target = list(forecaster.models.keys())[0]
-                    model = forecaster.models[target]
-                    
-                    # Create figure for components
-                    future = model.make_future_dataframe(periods=24*7, freq='H')
-                    future['is_weekday'] = future['ds'].dt.dayofweek < 5
-                    future['is_weekend'] = ~future['is_weekday']
-                    forecast = model.predict(future)
-                    
-                    # Weekly pattern
-                    weekly_pattern = forecast.groupby(forecast['ds'].dt.dayofweek)['weekly'].mean()
-                    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-                    
-                    fig_weekly = go.Figure()
-                    fig_weekly.add_trace(go.Bar(
-                        x=days,
-                        y=weekly_pattern.values,
-                        marker_color='#667eea'
-                    ))
-                    fig_weekly.update_layout(
-                        title=f"Weekly Pattern: {target.replace('_', ' ').title()}",
-                        xaxis_title="Day of Week",
-                        yaxis_title="Effect",
-                        height=300
-                    )
-                    st.plotly_chart(fig_weekly, use_container_width=True)
-                    
-                except Exception as e:
-                    st.warning(f"Could not display components: {e}")
+    # Model-specific visualizations (outside the metrics loop)
+    if st.session_state.get("model_type") == "Prophet" and PROPHET_AVAILABLE:
+        st.markdown("### 📊 Prophet Components")
+        st.info("Prophet automatically decomposes your data into trend, weekly, and yearly patterns.")
         
-        elif st.session_state.get("model_type") == "GradientBoosting":
-            # Feature importance for gradient boosting
-            if hasattr(st.session_state.forecaster, 'get_feature_importance'):
-                st.markdown("### Feature Importance")
+        forecaster = st.session_state.forecaster
+        
+        with st.expander("View Seasonality Patterns", expanded=False):
+            try:
+                target = list(forecaster.models.keys())[0]
+                model = forecaster.models[target]
                 
-                importance = st.session_state.forecaster.get_feature_importance()
-                if len(importance) > 0:
-                    top_n = min(15, len(importance))
-                    
-                    fig = px.bar(
-                        importance.head(top_n),
-                        x="avg_importance",
-                        y="feature",
-                        orientation="h",
-                        title=f"Top {top_n} Most Important Features"
-                    )
-                    fig.update_layout(yaxis=dict(autorange="reversed"))
-                    st.plotly_chart(fig, use_container_width=True)
+                # Create figure for components
+                future = model.make_future_dataframe(periods=24*7, freq='H')
+                future['is_weekday'] = future['ds'].dt.dayofweek < 5
+                future['is_weekend'] = ~future['is_weekday']
+                forecast = model.predict(future)
+                
+                # Weekly pattern
+                weekly_pattern = forecast.groupby(forecast['ds'].dt.dayofweek)['weekly'].mean()
+                days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                
+                fig_weekly = go.Figure()
+                fig_weekly.add_trace(go.Bar(
+                    x=days,
+                    y=weekly_pattern.values,
+                    marker_color='#667eea'
+                ))
+                fig_weekly.update_layout(
+                    title=f"Weekly Pattern: {target.replace('_', ' ').title()}",
+                    xaxis_title="Day of Week",
+                    yaxis_title="Effect",
+                    height=300
+                )
+                st.plotly_chart(fig_weekly, use_container_width=True, key="prophet_weekly_pattern")
+                
+            except Exception as e:
+                st.warning(f"Could not display components: {e}")
+    
+    elif st.session_state.get("model_type") == "GradientBoosting":
+        # Feature importance for gradient boosting
+        if hasattr(st.session_state.forecaster, 'get_feature_importance'):
+            st.markdown("### Feature Importance")
+            
+            importance = st.session_state.forecaster.get_feature_importance()
+            if len(importance) > 0:
+                top_n = min(15, len(importance))
+                
+                fig = px.bar(
+                    importance.head(top_n),
+                    x="avg_importance",
+                    y="feature",
+                    orientation="h",
+                    title=f"Top {top_n} Most Important Features"
+                )
+                fig.update_layout(yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig, use_container_width=True, key="gb_feature_importance")
 
 
 def forecast_section(capacity_config: CapacityConfig):
