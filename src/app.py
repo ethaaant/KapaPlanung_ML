@@ -1169,15 +1169,16 @@ def _render_load_model_panel(model_manager: ModelManager):
             if st.button("📥 Load Model", type="primary", use_container_width=True):
                 with st.spinner("Loading model..."):
                     try:
-                        loaded_model = model_manager.load_model(selected_model_id, selected_version)
+                        # load_model returns (model, metadata) tuple
+                        loaded_model, loaded_metadata = model_manager.load_model(selected_model_id, selected_version)
                         
                         st.session_state.forecaster = loaded_model
                         st.session_state.model_trained = True
                         st.session_state.model_source = "loaded"
                         st.session_state.model_version = selected_version
-                        st.session_state.model_type = selected_metadata.model_type
-                        st.session_state.model_metadata = selected_metadata
-                        st.session_state.training_metrics = selected_metadata.metrics
+                        st.session_state.model_type = loaded_metadata.model_type
+                        st.session_state.model_metadata = loaded_metadata
+                        st.session_state.training_metrics = loaded_metadata.metrics
                         
                         st.success(f"✅ Model loaded successfully: {selected_model_id} v{selected_version}")
                         st.rerun()
