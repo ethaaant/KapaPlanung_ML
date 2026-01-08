@@ -1827,8 +1827,14 @@ def results_section():
         weekly_table["Daily Avg"] = weekly_table.mean(axis=1).round(1)
         weekly_table["Peak Hour"] = weekly_schedule.max(axis=1).round(0).astype(int)
         
+        # Get hour columns (all except Daily Avg and Peak Hour)
+        hour_cols = [c for c in weekly_table.columns if c not in ["Daily Avg", "Peak Hour"]]
+        
         st.dataframe(
-            weekly_table.style.background_gradient(cmap="Blues", subset=weekly_table.columns[:-2]),
+            weekly_table.style
+                .background_gradient(cmap="Blues", subset=hour_cols)
+                .format("{:.0f}", subset=hour_cols)
+                .format("{:.1f}", subset=["Daily Avg"]),
             use_container_width=True
         )
         
