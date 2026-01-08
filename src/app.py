@@ -27,6 +27,10 @@ from src.data.preprocessor import Preprocessor
 from src.models.forecaster import WorkloadForecaster
 from src.models.capacity import CapacityPlanner
 from src.models.model_manager import ModelManager, ModelMetadata
+from src.utils.quality_indicators import (
+    get_quality_indicator, compare_forecast_to_actuals,
+    calculate_peak_detection_accuracy, QualityIndicator, ForecastComparison
+)
 
 # Try to import Prophet forecaster
 try:
@@ -1682,6 +1686,56 @@ def forecast_section(capacity_config: CapacityConfig):
                 st.code(traceback.format_exc())
 
 
+def render_forecast_quality_card():
+    """Render the forecast quality indicator card."""
+    training_metrics = st.session_state.get("training_metrics", {})
+    forecast_start = st.session_state.get("forecast_start")
+    forecast_end = st.session_state.get("forecast_end")
+    
+    # Calculate forecast horizon
+    if forecast_start and forecast_end:
+        horizon_days = (forecast_end - forecast_start).days + 1
+    else:
+        horizon_days = 7
+    
+    # Get quality indicator
+    quality = get_quality_indicator(
+        training_metrics=training_metrics,
+        forecast_horizon_days=horizon_days
+    )
+    
+    # Render the card
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, {quality.color}15 0%, {quality.color}05 100%);
+        border-left: 4px solid {quality.color};
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    ">
+        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
+            <span style="font-size: 2rem;">{quality.emoji}</span>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 600; color: {quality.color};">
+                    {quality.confidence_score:.0f}% Confidence
+                </div>
+                <div style="font-size: 1rem; font-weight: 500; color: #374151;">
+                    {quality.label}
+                </div>
+            </div>
+        </div>
+        <p style="color: #4b5563; margin-bottom: 0.5rem; font-size: 0.95rem;">
+            {quality.explanation}
+        </p>
+        <ul style="color: #6b7280; margin: 0; padding-left: 1.25rem; font-size: 0.85rem;">
+            {"".join(f"<li>{detail}</li>" for detail in quality.details)}
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    return quality
+
+
 def results_section():
     """Render forecast results and staffing plan."""
     if not st.session_state.forecast_generated:
@@ -1689,6 +1743,9 @@ def results_section():
         return
     
     st.markdown("## 📊 Forecast Results")
+    
+    # Show forecast quality card
+    render_forecast_quality_card()
     
     forecast_df = st.session_state.forecast_df
     staffing_plan = st.session_state.staffing_plan
@@ -2941,6 +2998,379 @@ def dienstleister_view():
         )
 
 
+def review_forecasts_section():
+    """Section for reviewing past forecasts against actual results."""
+    st.markdown("## 🔄 Review Forecasts")
+    st.markdown("Compare your forecasts to actual results and help the model learn.")
+    
+    # Initialize forecast history in session state
+    if "forecast_history" not in st.session_state:
+        st.session_state.forecast_history = []
+    
+    # Check if there's a current forecast to review
+    if not st.session_state.get("forecast_generated", False):
+        st.info("📊 Generate a forecast first, then come back here to compare it with actual results.")
+        return
+    
+    # Create tabs for different review functions
+    review_tab1, review_tab2 = st.tabs(["📤 Upload Actuals", "📊 View Comparison"])
+    
+    with review_tab1:
+        _render_actuals_upload_section()
+    
+    with review_tab2:
+        _render_comparison_section()
+
+
+def _render_actuals_upload_section():
+    """Render the section for uploading actual data."""
+    st.markdown("### Upload Actual Data")
+    st.markdown("After the forecast period ends, upload your actual data to see how accurate the prediction was.")
+    
+    # Show current forecast info
+    forecast_start = st.session_state.get("forecast_start")
+    forecast_end = st.session_state.get("forecast_end")
+    
+    if forecast_start and forecast_end:
+        st.info(f"📅 **Current Forecast Period:** {forecast_start} to {forecast_end}")
+    
+    # File upload
+    st.markdown("#### Upload Actual Results")
+    st.caption("Upload a CSV or Excel file with the actual call/email/outbound volumes for the forecast period.")
+    
+    uploaded_file = st.file_uploader(
+        "Choose file with actual data",
+        type=["csv", "xlsx", "xls"],
+        key="actuals_upload",
+        help="File should have a 'timestamp' column and columns matching your forecast targets"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            # Load the file
+            if uploaded_file.name.endswith('.csv'):
+                actuals_df = pd.read_csv(uploaded_file)
+            else:
+                actuals_df = pd.read_excel(uploaded_file)
+            
+            # Try to parse timestamp
+            timestamp_cols = ['timestamp', 'date', 'datetime', 'time', 'Timestamp', 'Date']
+            ts_col = None
+            for col in timestamp_cols:
+                if col in actuals_df.columns:
+                    ts_col = col
+                    break
+            
+            if ts_col:
+                actuals_df['timestamp'] = pd.to_datetime(actuals_df[ts_col])
+                if ts_col != 'timestamp':
+                    actuals_df = actuals_df.drop(columns=[ts_col])
+            else:
+                st.error("❌ Could not find a timestamp column. Please ensure your file has a 'timestamp' or 'date' column.")
+                return
+            
+            # Show preview
+            st.markdown("#### Data Preview")
+            numeric_cols = actuals_df.select_dtypes(include=[np.number]).columns
+            st.dataframe(
+                actuals_df.head(10).style.format("{:.1f}", subset=numeric_cols),
+                use_container_width=True
+            )
+            
+            st.caption(f"Loaded {len(actuals_df)} rows from {actuals_df['timestamp'].min()} to {actuals_df['timestamp'].max()}")
+            
+            # Compare button
+            if st.button("🔍 Compare to Forecast", type="primary", use_container_width=True):
+                with st.spinner("Analyzing forecast accuracy..."):
+                    forecast_df = st.session_state.forecast_df
+                    
+                    # Run comparison
+                    comparison = compare_forecast_to_actuals(
+                        forecast_df=forecast_df,
+                        actuals_df=actuals_df,
+                        forecast_id=f"forecast_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    )
+                    
+                    # Store in session state
+                    st.session_state.last_comparison = comparison
+                    st.session_state.actuals_df = actuals_df
+                    
+                    st.success("✅ Comparison complete! Go to 'View Comparison' tab to see results.")
+                    st.rerun()
+                    
+        except Exception as e:
+            st.error(f"Error loading file: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
+    
+    # Sample format download
+    with st.expander("📋 Expected File Format", expanded=False):
+        st.markdown("""
+        Your file should have these columns:
+        - **timestamp**: Date and time (e.g., '2026-01-15 09:00:00')
+        - **call_volume**: Number of calls
+        - **email_count**: Number of emails
+        - **outbound_ook/omk/nb**: Outbound call volumes (optional)
+        
+        The column names should match your forecast output.
+        """)
+        
+        # Create sample data
+        sample_df = pd.DataFrame({
+            'timestamp': pd.date_range('2026-01-15', periods=24, freq='H'),
+            'call_volume': np.random.randint(20, 50, 24),
+            'email_count': np.random.randint(10, 30, 24),
+            'outbound_ook': np.random.randint(5, 15, 24)
+        })
+        
+        csv_sample = sample_df.to_csv(index=False)
+        st.download_button(
+            "📥 Download Sample Template",
+            data=csv_sample,
+            file_name="actuals_template.csv",
+            mime="text/csv"
+        )
+
+
+def _render_comparison_section():
+    """Render the forecast vs actuals comparison."""
+    st.markdown("### Forecast vs Actual Comparison")
+    
+    comparison = st.session_state.get("last_comparison")
+    
+    if comparison is None:
+        st.info("📤 Upload actual data in the 'Upload Actuals' tab to see a comparison.")
+        return
+    
+    # Overall accuracy card
+    _render_accuracy_card(comparison)
+    
+    # Summary
+    st.markdown("### 📝 Summary")
+    st.markdown(f"**{comparison.summary}**")
+    
+    # Highlights and improvements in two columns
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### ✅ What Went Well")
+        if comparison.highlights:
+            for highlight in comparison.highlights:
+                st.markdown(f"- {highlight}")
+        else:
+            st.markdown("- No specific highlights")
+    
+    with col2:
+        st.markdown("#### 🎯 Areas for Improvement")
+        if comparison.areas_for_improvement:
+            for improvement in comparison.areas_for_improvement:
+                st.markdown(f"- {improvement}")
+        else:
+            st.markdown("- No issues detected")
+    
+    # Per-target breakdown
+    if comparison.target_metrics:
+        st.markdown("### 📊 Detailed Breakdown")
+        
+        # Create metrics cards
+        n_cols = min(len(comparison.target_metrics), 4)
+        cols = st.columns(n_cols)
+        
+        for i, (target, metrics) in enumerate(comparison.target_metrics.items()):
+            with cols[i % n_cols]:
+                accuracy = metrics.get('accuracy', 0)
+                color = "#10b981" if accuracy >= 80 else "#f59e0b" if accuracy >= 60 else "#ef4444"
+                
+                st.markdown(f"""
+                <div style="
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 1rem;
+                    text-align: center;
+                ">
+                    <div style="font-weight: 600; color: #374151; margin-bottom: 0.5rem;">
+                        {target.replace('_', ' ').title()}
+                    </div>
+                    <div style="font-size: 2rem; font-weight: 700; color: {color};">
+                        {accuracy:.0f}%
+                    </div>
+                    <div style="font-size: 0.8rem; color: #6b7280;">Accuracy</div>
+                    <hr style="margin: 0.5rem 0; border-color: #e5e7eb;">
+                    <div style="font-size: 0.85rem; color: #6b7280;">
+                        Predicted: {metrics.get('total_predicted', 0):,.0f}<br>
+                        Actual: {metrics.get('total_actual', 0):,.0f}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # Visual comparison chart
+    st.markdown("### 📈 Visual Comparison")
+    _render_comparison_chart(comparison)
+    
+    # Learning feedback
+    st.markdown("---")
+    st.markdown("### 🧠 Help the Model Learn")
+    st.markdown("Your feedback helps improve future forecasts.")
+    
+    col_fb1, col_fb2 = st.columns([2, 1])
+    
+    with col_fb1:
+        feedback_note = st.text_area(
+            "Add notes about this period (optional)",
+            placeholder="e.g., 'Marketing campaign ran on Tuesday', 'Unexpected system outage on Friday'",
+            help="These notes help explain why forecasts may have been off"
+        )
+    
+    with col_fb2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("💾 Save Feedback", type="primary", use_container_width=True):
+            # Save to forecast history
+            history_entry = {
+                "forecast_id": comparison.forecast_id,
+                "period_start": str(comparison.period_start),
+                "period_end": str(comparison.period_end),
+                "overall_accuracy": comparison.overall_accuracy,
+                "target_metrics": comparison.target_metrics,
+                "feedback_note": feedback_note,
+                "saved_at": datetime.now().isoformat()
+            }
+            
+            if "forecast_history" not in st.session_state:
+                st.session_state.forecast_history = []
+            
+            st.session_state.forecast_history.append(history_entry)
+            st.success("✅ Feedback saved! This will help improve future forecasts.")
+
+
+def _render_accuracy_card(comparison: ForecastComparison):
+    """Render the main accuracy indicator card."""
+    accuracy = comparison.overall_accuracy
+    
+    # Determine color and emoji
+    if accuracy >= 80:
+        color = "#10b981"
+        emoji = "🟢"
+        label = "Excellent"
+    elif accuracy >= 60:
+        color = "#f59e0b"
+        emoji = "🟡"
+        label = "Good"
+    else:
+        color = "#ef4444"
+        emoji = "🔴"
+        label = "Needs Improvement"
+    
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, {color}20 0%, {color}05 100%);
+        border: 2px solid {color};
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    ">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">{emoji}</div>
+        <div style="font-size: 2.5rem; font-weight: 700; color: {color};">
+            {accuracy:.0f}% Accurate
+        </div>
+        <div style="font-size: 1.1rem; color: #374151; margin-top: 0.5rem;">
+            {label} - Average error of {comparison.overall_mape:.1f}%
+        </div>
+        <div style="font-size: 0.9rem; color: #6b7280; margin-top: 0.5rem;">
+            Period: {comparison.period_start.strftime('%Y-%m-%d')} to {comparison.period_end.strftime('%Y-%m-%d')}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def _render_comparison_chart(comparison: ForecastComparison):
+    """Render forecast vs actuals comparison chart."""
+    if comparison.comparison_df is None or comparison.comparison_df.empty:
+        st.warning("No comparison data available to visualize.")
+        return
+    
+    df = comparison.comparison_df
+    
+    # Find prediction and actual column pairs
+    pred_cols = [c for c in df.columns if c.endswith('_pred')]
+    
+    if not pred_cols:
+        st.warning("Could not identify prediction columns for visualization.")
+        return
+    
+    # Create chart for first target
+    target = pred_cols[0].replace('_pred', '')
+    pred_col = f"{target}_pred"
+    actual_col = f"{target}_actual"
+    
+    if actual_col not in df.columns:
+        st.warning(f"Could not find actual column for {target}.")
+        return
+    
+    fig = go.Figure()
+    
+    # Actual values
+    fig.add_trace(go.Scatter(
+        x=df['timestamp'],
+        y=df[actual_col],
+        name='Actual',
+        mode='lines',
+        line=dict(color='#10b981', width=2)
+    ))
+    
+    # Predicted values
+    fig.add_trace(go.Scatter(
+        x=df['timestamp'],
+        y=df[pred_col],
+        name='Predicted',
+        mode='lines',
+        line=dict(color='#667eea', width=2, dash='dash')
+    ))
+    
+    fig.update_layout(
+        title=f"{target.replace('_', ' ').title()}: Predicted vs Actual",
+        xaxis_title="Date/Time",
+        yaxis_title="Volume",
+        hovermode="x unified",
+        template="plotly_white",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    st.plotly_chart(fig, use_container_width=True, key="comparison_chart")
+    
+    # Show other targets if available
+    if len(pred_cols) > 1:
+        with st.expander("View other targets", expanded=False):
+            for pred_col in pred_cols[1:]:
+                target = pred_col.replace('_pred', '')
+                actual_col = f"{target}_actual"
+                
+                if actual_col not in df.columns:
+                    continue
+                
+                fig2 = go.Figure()
+                fig2.add_trace(go.Scatter(
+                    x=df['timestamp'], y=df[actual_col],
+                    name='Actual', mode='lines', line=dict(color='#10b981')
+                ))
+                fig2.add_trace(go.Scatter(
+                    x=df['timestamp'], y=df[pred_col],
+                    name='Predicted', mode='lines', line=dict(color='#667eea', dash='dash')
+                ))
+                fig2.update_layout(
+                    title=f"{target.replace('_', ' ').title()}: Predicted vs Actual",
+                    template="plotly_white", height=300
+                )
+                st.plotly_chart(fig2, use_container_width=True, key=f"comparison_chart_{target}")
+
+
 def admin_view():
     """Full admin view with all features."""
     # Render top navigation bar
@@ -2964,12 +3394,13 @@ def admin_view():
     capacity_config = compact_config()
     
     # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📁 Data",
         "🔍 Explore",
         "🧠 Train",
         "🔮 Forecast",
         "📈 Analytics",
+        "🔄 Review",
         "💾 Export"
     ])
     
@@ -2990,6 +3421,9 @@ def admin_view():
         analytics_section(capacity_config)
     
     with tab6:
+        review_forecasts_section()
+    
+    with tab7:
         export_section()
 
 

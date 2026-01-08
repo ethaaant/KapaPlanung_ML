@@ -382,6 +382,10 @@ def logout():
         "model_version",
         "model_metadata",
         "adjustment_factors",
+        # Forecast review
+        "forecast_history",
+        "last_comparison",
+        "actuals_df",
     }
     
     # Preserve important data

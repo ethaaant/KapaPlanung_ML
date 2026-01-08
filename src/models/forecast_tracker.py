@@ -455,6 +455,135 @@ class ForecastTracker:
         if forecast_id in self.forecasts:
             del self.forecasts[forecast_id]
             self._save_forecasts()
+    
+    def save_feedback(
+        self,
+        forecast_id: str,
+        accuracy_metrics: Dict[str, Any],
+        feedback_note: str = "",
+        user: str = ""
+    ):
+        """
+        Save user feedback for a forecast comparison.
+        
+        Args:
+            forecast_id: The forecast identifier
+            accuracy_metrics: Dict with accuracy metrics per target
+            feedback_note: User's explanation/notes
+            user: Username who submitted feedback
+        """
+        feedback_file = self.storage_dir / "feedback.json"
+        
+        # Load existing feedback
+        if feedback_file.exists():
+            with open(feedback_file, 'r') as f:
+                feedback_data = json.load(f)
+        else:
+            feedback_data = {"entries": []}
+        
+        # Add new entry
+        entry = {
+            "forecast_id": forecast_id,
+            "timestamp": datetime.now().isoformat(),
+            "accuracy_metrics": accuracy_metrics,
+            "feedback_note": feedback_note,
+            "user": user
+        }
+        
+        feedback_data["entries"].append(entry)
+        
+        # Save
+        with open(feedback_file, 'w') as f:
+            json.dump(feedback_data, f, indent=2, default=str)
+    
+    def get_historical_accuracy(self, limit: int = 50) -> Dict[str, float]:
+        """
+        Get historical accuracy metrics for confidence scoring.
+        
+        Returns:
+            Dict with average metrics across past forecasts
+        """
+        feedback_file = self.storage_dir / "feedback.json"
+        
+        if not feedback_file.exists():
+            return {}
+        
+        with open(feedback_file, 'r') as f:
+            feedback_data = json.load(f)
+        
+        entries = feedback_data.get("entries", [])[-limit:]
+        
+        if not entries:
+            return {}
+        
+        # Aggregate metrics
+        all_mapes = []
+        all_accuracies = []
+        
+        for entry in entries:
+            metrics = entry.get("accuracy_metrics", {})
+            for target, target_metrics in metrics.items():
+                if isinstance(target_metrics, dict):
+                    if "mape" in target_metrics:
+                        all_mapes.append(target_metrics["mape"])
+                    if "accuracy" in target_metrics:
+                        all_accuracies.append(target_metrics["accuracy"])
+        
+        return {
+            "avg_mape": np.mean(all_mapes) if all_mapes else None,
+            "avg_accuracy": np.mean(all_accuracies) if all_accuracies else None,
+            "n_forecasts_evaluated": len(entries),
+            "best_accuracy": max(all_accuracies) if all_accuracies else None,
+            "worst_accuracy": min(all_accuracies) if all_accuracies else None
+        }
+    
+    def get_learning_insights(self) -> Dict[str, Any]:
+        """
+        Analyze historical performance to generate learning insights.
+        
+        Returns:
+            Dict with insights for model improvement
+        """
+        summary = self.get_forecast_accuracy_summary(limit=20)
+        
+        if summary.empty:
+            return {
+                "status": "insufficient_data",
+                "message": "Not enough forecast history to generate insights"
+            }
+        
+        insights = {
+            "status": "ok",
+            "overall_avg_accuracy": 100 - summary["mape"].mean(),
+            "overall_avg_mape": summary["mape"].mean(),
+            "trend": None,
+            "recommendations": []
+        }
+        
+        # Check if accuracy is improving over time
+        if len(summary) >= 5:
+            recent_mape = summary.head(5)["mape"].mean()
+            older_mape = summary.tail(5)["mape"].mean()
+            
+            if recent_mape < older_mape:
+                insights["trend"] = "improving"
+                insights["recommendations"].append("Model accuracy is improving - continue current approach")
+            elif recent_mape > older_mape * 1.1:
+                insights["trend"] = "declining"
+                insights["recommendations"].append("Consider retraining the model with recent data")
+        
+        # Check for systematic issues by column
+        by_column = summary.groupby("column")["mape"].mean()
+        for col, mape in by_column.items():
+            if mape > 20:
+                insights["recommendations"].append(
+                    f"High error for {col} ({mape:.1f}% MAPE) - check data quality"
+                )
+        
+        # Check for day-of-week patterns
+        # This would require more detailed tracking
+        
+        return insights
 
 
 # Global tracker instance
