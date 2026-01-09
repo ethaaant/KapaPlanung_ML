@@ -1815,6 +1815,18 @@ def forecast_section(capacity_config: CapacityConfig):
     
     # Get the last date in the training data
     data = st.session_state.combined_data
+    
+    # Check if data is loaded
+    if data is None or len(data) == 0:
+        st.warning("⚠️ Keine Trainingsdaten geladen. Bitte laden Sie zuerst Daten im 'Daten'-Tab hoch.")
+        st.info("💡 **Tipp:** Auch bei einem geladenen Modell benötigen Sie Daten, um den Prognosezeitraum festzulegen.")
+        return
+    
+    # Check for timestamp column
+    if "timestamp" not in data.columns:
+        st.error("❌ Daten haben keine 'timestamp'-Spalte. Bitte laden Sie gültige Daten hoch.")
+        return
+    
     last_data_date = data["timestamp"].max()
     
     # Default dates: start from day after last data, forecast 7 days
