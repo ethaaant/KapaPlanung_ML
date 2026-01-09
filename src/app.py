@@ -653,6 +653,71 @@ def init_session_state():
             "outbound_omk": 0,
             "outbound_nb": 0
         }
+    
+    # Call Center Management
+    if "call_centers" not in st.session_state:
+        # Load from file if exists, otherwise use defaults
+        call_center_file = Path("data/call_centers/call_centers.json")
+        if call_center_file.exists():
+            import json
+            try:
+                with open(call_center_file, 'r', encoding='utf-8') as f:
+                    st.session_state.call_centers = json.load(f)
+            except:
+                st.session_state.call_centers = _get_default_call_centers()
+        else:
+            st.session_state.call_centers = _get_default_call_centers()
+
+
+def _get_default_call_centers():
+    """Return default call center configuration."""
+    import uuid
+    return {
+        "cc_kikxxl": {
+            "id": "cc_kikxxl",
+            "name": "KiKxxl",
+            "cost_per_agent_hour": 25.0,
+            "created_at": datetime.now().isoformat(),
+            "agents": {}
+        },
+        "cc_octopodo": {
+            "id": "cc_octopodo",
+            "name": "Octopodo",
+            "cost_per_agent_hour": 28.0,
+            "created_at": datetime.now().isoformat(),
+            "agents": {}
+        },
+        "cc_gevekom": {
+            "id": "cc_gevekom",
+            "name": "Gevekom",
+            "cost_per_agent_hour": 26.0,
+            "created_at": datetime.now().isoformat(),
+            "agents": {}
+        }
+    }
+
+
+def _save_call_centers():
+    """Save call centers to file for persistence."""
+    import json
+    data_dir = Path("data/call_centers")
+    data_dir.mkdir(parents=True, exist_ok=True)
+    with open(data_dir / "call_centers.json", 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.call_centers, f, indent=2, ensure_ascii=False)
+
+
+def _generate_agent_id(call_center_id: str) -> str:
+    """Generate a unique agent ID."""
+    import uuid
+    return f"agent_{call_center_id}_{uuid.uuid4().hex[:8]}"
+
+
+def _generate_call_center_id(name: str) -> str:
+    """Generate a unique call center ID."""
+    import uuid
+    # Create a readable ID from name + unique suffix
+    clean_name = name.lower().replace(" ", "_").replace("-", "_")
+    return f"cc_{clean_name}_{uuid.uuid4().hex[:6]}"
 
 
 def render_top_bar():
@@ -2439,15 +2504,15 @@ def analytics_section(capacity_config):
     st.markdown("## 📈 Data Science Analytics")
     
     if not st.session_state.get("data_loaded", False):
-        st.info("👆 Please load data first to access analytics")
+        st.info("👆 Bitte zuerst Daten laden")
         return
     
     # Sub-tabs for different analytics
     analytics_tabs = st.tabs([
-        "🔬 Model Diagnostics",
-        "📊 Time Series Analysis",
-        "📉 Forecast Confidence",
-        "🎯 What-If Scenarios"
+        "🔬 Modelldiagnose",
+        "📊 Zeitreihenanalyse",
+        "📉 Forecast Verlässlichkeit",
+        "🎯 Was-wäre-wenn Szenarios"
     ])
     
     # Tab 1: Model Diagnostics
@@ -3668,6 +3733,301 @@ def _render_comparison_chart(comparison: ForecastComparison):
                 st.plotly_chart(fig2, use_container_width=True, key=f"comparison_chart_{target}")
 
 
+def call_center_management_section():
+    """Call Center and Agent Management Section for Admins."""
+    st.markdown("### 🏢 Call-Center-Verwaltung")
+    st.caption("Verwalten Sie Call-Center, Agenten und Kosten.")
+    
+    # Summary metrics at top
+    total_centers = len(st.session_state.call_centers)
+    total_agents = sum(len(cc.get("agents", {})) for cc in st.session_state.call_centers.values())
+    active_agents = sum(
+        1 for cc in st.session_state.call_centers.values() 
+        for agent in cc.get("agents", {}).values() 
+        if agent.get("is_active", True)
+    )
+    total_fte = sum(
+        agent.get("fte", 1.0) for cc in st.session_state.call_centers.values() 
+        for agent in cc.get("agents", {}).values() 
+        if agent.get("is_active", True)
+    )
+    
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+    with metric_col1:
+        st.metric("Call-Center", total_centers)
+    with metric_col2:
+        st.metric("Agenten (Gesamt)", total_agents)
+    with metric_col3:
+        st.metric("Agenten (Aktiv)", active_agents)
+    with metric_col4:
+        st.metric("FTE (Aktiv)", f"{total_fte:.1f}")
+    
+    st.markdown("---")
+    
+    # Two-column layout: Call centers list on left, details on right
+    col_list, col_details = st.columns([1, 2])
+    
+    with col_list:
+        st.markdown("#### 📋 Call-Center")
+        
+        # Add new call center
+        with st.expander("➕ Neues Call-Center hinzufügen", expanded=False):
+            new_cc_name = st.text_input("Name", key="new_cc_name", placeholder="z.B. Neues CallCenter")
+            new_cc_cost = st.number_input(
+                "Kosten pro Agent/Stunde (€)", 
+                min_value=10.0, max_value=100.0, value=25.0, step=0.5,
+                key="new_cc_cost"
+            )
+            
+            if st.button("✅ Call-Center erstellen", key="create_cc_btn", use_container_width=True):
+                if new_cc_name and new_cc_name.strip():
+                    new_id = _generate_call_center_id(new_cc_name.strip())
+                    st.session_state.call_centers[new_id] = {
+                        "id": new_id,
+                        "name": new_cc_name.strip(),
+                        "cost_per_agent_hour": new_cc_cost,
+                        "created_at": datetime.now().isoformat(),
+                        "agents": {}
+                    }
+                    _save_call_centers()
+                    st.success(f"✅ Call-Center '{new_cc_name}' erstellt!")
+                    st.rerun()
+                else:
+                    st.error("Bitte geben Sie einen Namen ein.")
+        
+        # List existing call centers
+        st.markdown("##### Vorhandene Call-Center")
+        
+        # Initialize selected call center
+        if "selected_call_center" not in st.session_state:
+            st.session_state.selected_call_center = None
+        
+        for cc_id, cc_data in st.session_state.call_centers.items():
+            agent_count = len(cc_data.get("agents", {}))
+            active_count = sum(1 for a in cc_data.get("agents", {}).values() if a.get("is_active", True))
+            
+            # Button to select call center
+            btn_label = f"🏢 {cc_data['name']} ({active_count}/{agent_count} Agenten)"
+            if st.button(btn_label, key=f"select_cc_{cc_id}", use_container_width=True):
+                st.session_state.selected_call_center = cc_id
+                st.rerun()
+    
+    with col_details:
+        if st.session_state.selected_call_center and st.session_state.selected_call_center in st.session_state.call_centers:
+            cc_id = st.session_state.selected_call_center
+            cc_data = st.session_state.call_centers[cc_id]
+            
+            st.markdown(f"#### 🏢 {cc_data['name']}")
+            st.caption(f"ID: `{cc_id}`")
+            
+            # Call center settings
+            with st.expander("⚙️ Call-Center Einstellungen", expanded=True):
+                settings_col1, settings_col2 = st.columns(2)
+                
+                with settings_col1:
+                    updated_name = st.text_input(
+                        "Name", 
+                        value=cc_data['name'],
+                        key=f"edit_name_{cc_id}"
+                    )
+                
+                with settings_col2:
+                    updated_cost = st.number_input(
+                        "Kosten pro Agent/Stunde (€)",
+                        min_value=10.0, max_value=100.0,
+                        value=float(cc_data.get('cost_per_agent_hour', 25.0)),
+                        step=0.5,
+                        key=f"edit_cost_{cc_id}"
+                    )
+                
+                btn_col1, btn_col2 = st.columns(2)
+                with btn_col1:
+                    if st.button("💾 Speichern", key=f"save_cc_{cc_id}", use_container_width=True):
+                        st.session_state.call_centers[cc_id]['name'] = updated_name
+                        st.session_state.call_centers[cc_id]['cost_per_agent_hour'] = updated_cost
+                        _save_call_centers()
+                        st.success("✅ Gespeichert!")
+                        st.rerun()
+                
+                with btn_col2:
+                    if st.button("🗑️ Call-Center löschen", key=f"delete_cc_{cc_id}", use_container_width=True, type="secondary"):
+                        del st.session_state.call_centers[cc_id]
+                        st.session_state.selected_call_center = None
+                        _save_call_centers()
+                        st.warning(f"Call-Center '{cc_data['name']}' gelöscht!")
+                        st.rerun()
+            
+            st.markdown("---")
+            
+            # Agent management
+            st.markdown("##### 👥 Agenten-Verwaltung")
+            
+            # Add new agent
+            with st.expander("➕ Neuen Agenten hinzufügen", expanded=False):
+                agent_col1, agent_col2 = st.columns(2)
+                
+                with agent_col1:
+                    new_agent_name = st.text_input(
+                        "Name des Agenten",
+                        key=f"new_agent_name_{cc_id}",
+                        placeholder="z.B. Max Mustermann"
+                    )
+                
+                with agent_col2:
+                    new_agent_fte = st.number_input(
+                        "FTE",
+                        min_value=0.1, max_value=1.0, value=1.0, step=0.1,
+                        key=f"new_agent_fte_{cc_id}",
+                        help="Vollzeitäquivalent: 1.0 = Vollzeit, 0.5 = Teilzeit"
+                    )
+                
+                new_agent_active = st.checkbox("Aktiv", value=True, key=f"new_agent_active_{cc_id}")
+                
+                if st.button("✅ Agent hinzufügen", key=f"add_agent_{cc_id}", use_container_width=True):
+                    if new_agent_name and new_agent_name.strip():
+                        agent_id = _generate_agent_id(cc_id)
+                        if "agents" not in st.session_state.call_centers[cc_id]:
+                            st.session_state.call_centers[cc_id]["agents"] = {}
+                        
+                        st.session_state.call_centers[cc_id]["agents"][agent_id] = {
+                            "id": agent_id,
+                            "name": new_agent_name.strip(),
+                            "fte": new_agent_fte,
+                            "is_active": new_agent_active,
+                            "created_at": datetime.now().isoformat()
+                        }
+                        _save_call_centers()
+                        st.success(f"✅ Agent '{new_agent_name}' hinzugefügt!")
+                        st.rerun()
+                    else:
+                        st.error("Bitte geben Sie einen Namen ein.")
+            
+            # List agents
+            agents = cc_data.get("agents", {})
+            
+            if agents:
+                # Create dataframe for agents
+                agent_data = []
+                for agent_id, agent in agents.items():
+                    agent_data.append({
+                        "ID": agent_id,
+                        "Name": agent.get("name", ""),
+                        "FTE": agent.get("fte", 1.0),
+                        "Status": "✅ Aktiv" if agent.get("is_active", True) else "❌ Inaktiv",
+                        "is_active": agent.get("is_active", True)
+                    })
+                
+                agent_df = pd.DataFrame(agent_data)
+                
+                # Summary
+                active_fte = agent_df[agent_df['is_active']]['FTE'].sum()
+                st.info(f"**{len(agents)} Agenten** | **{active_fte:.1f} FTE aktiv** | **{cc_data.get('cost_per_agent_hour', 25):.2f}€/Stunde**")
+                
+                # Agent table with edit functionality
+                st.markdown("**Agentenliste:**")
+                
+                for agent_id, agent in agents.items():
+                    with st.container():
+                        agent_cols = st.columns([3, 1, 1, 1, 1])
+                        
+                        with agent_cols[0]:
+                            st.markdown(f"**{agent.get('name', 'N/A')}**")
+                            st.caption(f"ID: `{agent_id[:20]}...`")
+                        
+                        with agent_cols[1]:
+                            new_fte = st.number_input(
+                                "FTE",
+                                min_value=0.1, max_value=1.0,
+                                value=float(agent.get('fte', 1.0)),
+                                step=0.1,
+                                key=f"fte_{agent_id}",
+                                label_visibility="collapsed"
+                            )
+                            st.caption("FTE")
+                        
+                        with agent_cols[2]:
+                            is_active = st.checkbox(
+                                "Aktiv",
+                                value=agent.get('is_active', True),
+                                key=f"active_{agent_id}"
+                            )
+                        
+                        with agent_cols[3]:
+                            if st.button("💾", key=f"save_agent_{agent_id}", help="Speichern"):
+                                st.session_state.call_centers[cc_id]["agents"][agent_id]["fte"] = new_fte
+                                st.session_state.call_centers[cc_id]["agents"][agent_id]["is_active"] = is_active
+                                _save_call_centers()
+                                st.rerun()
+                        
+                        with agent_cols[4]:
+                            if st.button("🗑️", key=f"del_agent_{agent_id}", help="Löschen"):
+                                del st.session_state.call_centers[cc_id]["agents"][agent_id]
+                                _save_call_centers()
+                                st.rerun()
+                        
+                        st.markdown("---")
+            else:
+                st.info("Noch keine Agenten in diesem Call-Center. Fügen Sie oben neue Agenten hinzu.")
+            
+            # Cost calculation
+            if agents:
+                st.markdown("##### 💰 Kostenübersicht")
+                
+                active_agents_list = [a for a in agents.values() if a.get("is_active", True)]
+                total_fte_cc = sum(a.get("fte", 1.0) for a in active_agents_list)
+                hourly_cost = total_fte_cc * cc_data.get('cost_per_agent_hour', 25.0)
+                daily_cost = hourly_cost * 8  # Assuming 8-hour day
+                monthly_cost = daily_cost * 22  # Assuming 22 working days
+                
+                cost_col1, cost_col2, cost_col3 = st.columns(3)
+                with cost_col1:
+                    st.metric("Kosten / Stunde", f"{hourly_cost:,.2f}€")
+                with cost_col2:
+                    st.metric("Kosten / Tag (8h)", f"{daily_cost:,.2f}€")
+                with cost_col3:
+                    st.metric("Kosten / Monat", f"{monthly_cost:,.2f}€")
+        
+        else:
+            st.info("👈 Wählen Sie ein Call-Center aus der Liste aus, um Details anzuzeigen und zu bearbeiten.")
+    
+    # Export section
+    st.markdown("---")
+    with st.expander("📥 Daten exportieren / importieren", expanded=False):
+        export_col1, export_col2 = st.columns(2)
+        
+        with export_col1:
+            st.markdown("**Export**")
+            import json
+            export_data = json.dumps(st.session_state.call_centers, indent=2, ensure_ascii=False)
+            st.download_button(
+                "📥 Call-Center-Daten als JSON exportieren",
+                data=export_data,
+                file_name=f"call_centers_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+        
+        with export_col2:
+            st.markdown("**Import**")
+            import_file = st.file_uploader(
+                "JSON-Datei importieren",
+                type=['json'],
+                key="cc_import"
+            )
+            
+            if import_file:
+                try:
+                    import json
+                    imported_data = json.load(import_file)
+                    if st.button("📤 Importieren (überschreibt aktuelle Daten)", use_container_width=True):
+                        st.session_state.call_centers = imported_data
+                        _save_call_centers()
+                        st.success("✅ Daten erfolgreich importiert!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Fehler beim Importieren: {e}")
+
+
 def admin_view():
     """Full admin view with all features."""
     # Render top navigation bar
@@ -3691,13 +4051,14 @@ def admin_view():
     capacity_config = compact_config()
     
     # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        "📁 Data",
-        "🔍 Explore",
-        "🧠 Train",
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+        "📁 Daten",
+        "🔍 Erkunden",
+        "🧠 Training",
         "🔮 Forecast",
         "📈 Analytics",
         "🔄 Review",
+        "🏢 Call-Center",
         "💾 Export"
     ])
     
@@ -3721,6 +4082,9 @@ def admin_view():
         review_forecasts_section()
     
     with tab7:
+        call_center_management_section()
+    
+    with tab8:
         export_section()
 
 
