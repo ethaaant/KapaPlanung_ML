@@ -877,8 +877,16 @@ def compact_config():
         if "historical_leads_interval" not in st.session_state:
             st.session_state.historical_leads_interval = None
         
-        # Interval selection
-        col_interval, col_spacer = st.columns([1, 3])
+        # Format examples based on interval
+        format_examples = {
+            "Täglich": "z.B. 01.01.2026, 02.01.2026, 03.01.2026, ...",
+            "Wöchentlich": "z.B. 06.01.2026 (KW1), 13.01.2026 (KW2), ...",
+            "Monatlich": "z.B. 01.01.2026, 01.02.2026, 01.03.2026, ..."
+        }
+        
+        # Interval selection with info box on the right
+        col_interval, col_info = st.columns([1, 2])
+        
         with col_interval:
             interval = st.selectbox(
                 "Datenintervall",
@@ -887,20 +895,18 @@ def compact_config():
                 help="Wählen Sie das Intervall Ihrer historischen Daten"
             )
         
-        # Format examples based on interval
-        format_examples = {
-            "Täglich": "z.B. 01.01.2026, 02.01.2026, 03.01.2026, ...",
-            "Wöchentlich": "z.B. 06.01.2026 (KW1), 13.01.2026 (KW2), ...",
-            "Monatlich": "z.B. 01.01.2026, 01.02.2026, 01.03.2026, ..."
-        }
+        with col_info:
+            info_placeholder = st.empty()
         
-        st.info(f"""
-        **Erwartetes Dateiformat ({interval}):**
-        - **Spalte 1:** Datum (`YYYY-MM-DD` oder `DD.MM.YYYY`) — {format_examples[interval]}
-        - **Spalte 2:** Anzahl Leads (numerisch)
-        
-        Optional: Weitere Spalten werden ignoriert.
-        """)
+        # Render info box after selectbox value is determined
+        with info_placeholder.container():
+            st.info(f"""
+**Erwartetes Dateiformat ({interval}):**
+- **Spalte 1:** Datum (`YYYY-MM-DD` oder `DD.MM.YYYY`) — {format_examples[interval]}
+- **Spalte 2:** Anzahl Leads (numerisch)
+
+Optional: Weitere Spalten werden ignoriert.
+""")
         
         # File upload
         uploaded_leads_file = st.file_uploader(
