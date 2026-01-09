@@ -860,11 +860,237 @@ def compact_config():
         
         sum_col1, sum_col2, sum_col3 = st.columns(3)
         with sum_col1:
-            st.metric("Total Leads", f"{total_leads:,}")
+            st.metric("Gesamt Leads", f"{total_leads:,}")
         with sum_col2:
-            st.metric("Adjusted Leads", f"{total_adjusted:,}")
+            st.metric("Angepasste Leads", f"{total_adjusted:,}")
         with sum_col3:
-            st.metric("Avg Contact Rate", f"{avg_contact_rate:.1f}%")
+            st.metric("Ø Kontaktrate", f"{avg_contact_rate:.1f}%")
+    
+    # Historical Lead Data Upload Section
+    with st.expander("📂 **Historische Leaddaten** — Basis für Wachstumsprognose", expanded=False):
+        st.markdown("##### Historische Lead-Daten hochladen")
+        st.caption("Laden Sie Ihre historischen Lead-Zahlen hoch, um Wachstumstrends automatisch zu berechnen.")
+        
+        # Initialize historical leads in session state
+        if "historical_leads" not in st.session_state:
+            st.session_state.historical_leads = None
+        if "historical_leads_interval" not in st.session_state:
+            st.session_state.historical_leads_interval = None
+        
+        # Interval selection
+        col_interval, col_info = st.columns([1, 2])
+        with col_interval:
+            interval = st.selectbox(
+                "Datenintervall",
+                options=["Täglich", "Wöchentlich", "Monatlich"],
+                help="Wählen Sie das Intervall Ihrer historischen Daten"
+            )
+        
+        with col_info:
+            st.info(f"""
+            **Erwartetes Dateiformat ({interval}):**
+            - **Spalte 1:** Datum (`YYYY-MM-DD` oder `DD.MM.YYYY`)
+            - **Spalte 2:** Anzahl Leads (numerisch)
+            
+            Optional: Weitere Spalten werden ignoriert.
+            """)
+        
+        # File upload
+        uploaded_leads_file = st.file_uploader(
+            "Historische Leads hochladen",
+            type=["csv", "xlsx", "xls"],
+            key="leads_file_upload",
+            help="CSV oder Excel-Datei mit historischen Lead-Zahlen"
+        )
+        
+        if uploaded_leads_file is not None:
+            try:
+                # Read the file
+                if uploaded_leads_file.name.endswith('.csv'):
+                    # Try different separators
+                    try:
+                        leads_df = pd.read_csv(uploaded_leads_file, sep=';')
+                        if len(leads_df.columns) < 2:
+                            uploaded_leads_file.seek(0)
+                            leads_df = pd.read_csv(uploaded_leads_file, sep=',')
+                    except:
+                        uploaded_leads_file.seek(0)
+                        leads_df = pd.read_csv(uploaded_leads_file)
+                else:
+                    leads_df = pd.read_excel(uploaded_leads_file)
+                
+                # Validate columns
+                if len(leads_df.columns) < 2:
+                    st.error("❌ Die Datei muss mindestens 2 Spalten haben (Datum und Leads)")
+                else:
+                    # Rename columns for consistency
+                    leads_df.columns = ['date'] + [f'col_{i}' for i in range(1, len(leads_df.columns))]
+                    leads_df = leads_df.rename(columns={'col_1': 'leads'})
+                    
+                    # Parse date column
+                    try:
+                        leads_df['date'] = pd.to_datetime(leads_df['date'], dayfirst=True)
+                    except:
+                        try:
+                            leads_df['date'] = pd.to_datetime(leads_df['date'])
+                        except:
+                            st.error("❌ Datumsformat nicht erkannt. Bitte verwenden Sie YYYY-MM-DD oder DD.MM.YYYY")
+                            leads_df = None
+                    
+                    if leads_df is not None:
+                        # Convert leads to numeric
+                        leads_df['leads'] = pd.to_numeric(leads_df['leads'], errors='coerce')
+                        leads_df = leads_df.dropna(subset=['date', 'leads'])
+                        leads_df['leads'] = leads_df['leads'].astype(int)
+                        
+                        # Sort by date
+                        leads_df = leads_df.sort_values('date').reset_index(drop=True)
+                        
+                        # Show preview
+                        st.markdown("---")
+                        st.markdown("##### Datenvorschau")
+                        
+                        preview_col1, preview_col2 = st.columns([2, 1])
+                        
+                        with preview_col1:
+                            st.dataframe(
+                                leads_df[['date', 'leads']].head(10),
+                                use_container_width=True,
+                                hide_index=True
+                            )
+                            if len(leads_df) > 10:
+                                st.caption(f"... und {len(leads_df) - 10} weitere Einträge")
+                        
+                        with preview_col2:
+                            st.metric("Anzahl Datensätze", f"{len(leads_df):,}")
+                            st.metric("Zeitraum", f"{leads_df['date'].min().strftime('%d.%m.%Y')} - {leads_df['date'].max().strftime('%d.%m.%Y')}")
+                            st.metric("Ø Leads / Periode", f"{leads_df['leads'].mean():,.0f}")
+                            st.metric("Gesamt Leads", f"{leads_df['leads'].sum():,}")
+                        
+                        # Calculate growth trend
+                        st.markdown("---")
+                        st.markdown("##### Wachstumstrend-Analyse")
+                        
+                        if len(leads_df) >= 2:
+                            # Calculate period-over-period growth
+                            leads_df['growth_pct'] = leads_df['leads'].pct_change() * 100
+                            avg_growth = leads_df['growth_pct'].mean()
+                            recent_growth = leads_df['growth_pct'].tail(3).mean() if len(leads_df) >= 4 else avg_growth
+                            
+                            growth_col1, growth_col2, growth_col3 = st.columns(3)
+                            with growth_col1:
+                                st.metric(
+                                    "Ø Wachstum (gesamt)",
+                                    f"{avg_growth:+.1f}%",
+                                    help="Durchschnittliche Wachstumsrate über den gesamten Zeitraum"
+                                )
+                            with growth_col2:
+                                st.metric(
+                                    "Ø Wachstum (letzte 3 Perioden)",
+                                    f"{recent_growth:+.1f}%",
+                                    help="Durchschnittliche Wachstumsrate der letzten 3 Perioden"
+                                )
+                            with growth_col3:
+                                trend_direction = "📈 Steigend" if recent_growth > 0 else ("📉 Fallend" if recent_growth < 0 else "➡️ Stabil")
+                                st.metric("Trend", trend_direction)
+                            
+                            # Visualization
+                            fig_leads = go.Figure()
+                            fig_leads.add_trace(go.Scatter(
+                                x=leads_df['date'],
+                                y=leads_df['leads'],
+                                mode='lines+markers',
+                                name='Leads',
+                                line=dict(color='#6366f1', width=2),
+                                marker=dict(size=6)
+                            ))
+                            
+                            # Add trend line
+                            z = np.polyfit(range(len(leads_df)), leads_df['leads'], 1)
+                            p = np.poly1d(z)
+                            fig_leads.add_trace(go.Scatter(
+                                x=leads_df['date'],
+                                y=p(range(len(leads_df))),
+                                mode='lines',
+                                name='Trendlinie',
+                                line=dict(color='#f59e0b', width=2, dash='dash')
+                            ))
+                            
+                            fig_leads.update_layout(
+                                title=f"Historische Leads ({interval})",
+                                xaxis_title="Datum",
+                                yaxis_title="Anzahl Leads",
+                                template="plotly_white",
+                                height=350
+                            )
+                            st.plotly_chart(fig_leads, use_container_width=True)
+                        
+                        # Save button
+                        st.markdown("---")
+                        save_col1, save_col2 = st.columns([1, 3])
+                        with save_col1:
+                            if st.button("💾 Daten speichern", type="primary", use_container_width=True):
+                                st.session_state.historical_leads = leads_df[['date', 'leads']].copy()
+                                st.session_state.historical_leads_interval = interval
+                                
+                                # Save to file for persistence
+                                data_dir = Path("data/historical_leads")
+                                data_dir.mkdir(parents=True, exist_ok=True)
+                                save_path = data_dir / "historical_leads.csv"
+                                leads_df[['date', 'leads']].to_csv(save_path, index=False)
+                                
+                                st.success("✅ Historische Lead-Daten erfolgreich gespeichert!")
+                                st.rerun()
+                        
+                        with save_col2:
+                            st.caption("Die Daten werden lokal gespeichert und als Basis für die Wachstumsprognose verwendet.")
+            
+            except Exception as e:
+                st.error(f"❌ Fehler beim Lesen der Datei: {str(e)}")
+        
+        # Show saved data summary if available
+        if st.session_state.historical_leads is not None:
+            st.markdown("---")
+            st.success(f"📊 **Gespeicherte Daten:** {len(st.session_state.historical_leads):,} Datensätze ({st.session_state.historical_leads_interval})")
+            
+            saved_df = st.session_state.historical_leads
+            saved_col1, saved_col2, saved_col3, saved_col4 = st.columns(4)
+            with saved_col1:
+                st.metric("Zeitraum Start", saved_df['date'].min().strftime('%d.%m.%Y'))
+            with saved_col2:
+                st.metric("Zeitraum Ende", saved_df['date'].max().strftime('%d.%m.%Y'))
+            with saved_col3:
+                st.metric("Ø Leads", f"{saved_df['leads'].mean():,.0f}")
+            with saved_col4:
+                if len(saved_df) >= 2:
+                    overall_growth = ((saved_df['leads'].iloc[-1] / saved_df['leads'].iloc[0]) - 1) * 100
+                    st.metric("Gesamtwachstum", f"{overall_growth:+.1f}%")
+            
+            # Apply to monthly targets button
+            if st.button("📥 Wachstumstrend auf monatliche Ziele anwenden", help="Überträgt den berechneten Wachstumstrend auf alle Monatsziele"):
+                if len(saved_df) >= 2:
+                    growth_rates = saved_df['leads'].pct_change().dropna()
+                    avg_monthly_growth = growth_rates.mean() * 100
+                    
+                    # Update all months with the average growth
+                    for key in st.session_state.business_metrics:
+                        st.session_state.business_metrics[key]['growth_pct'] = round(avg_monthly_growth, 1)
+                    
+                    st.success(f"✅ Wachstumstrend von {avg_monthly_growth:+.1f}% auf alle Monate angewendet!")
+                    st.rerun()
+        
+        # Load from file if exists but not in session
+        elif st.session_state.historical_leads is None:
+            saved_path = Path("data/historical_leads/historical_leads.csv")
+            if saved_path.exists():
+                try:
+                    saved_df = pd.read_csv(saved_path)
+                    saved_df['date'] = pd.to_datetime(saved_df['date'])
+                    st.session_state.historical_leads = saved_df
+                    st.session_state.historical_leads_interval = "Unbekannt"
+                    st.rerun()
+                except:
+                    pass
     
     service_level = service_level_pct / 100.0
     shrinkage = shrinkage_pct / 100.0
