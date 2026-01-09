@@ -674,7 +674,7 @@ def render_top_bar():
 def compact_config():
     """Render compact inline configuration panel."""
     # Capacity Planning Config
-    with st.expander("⚙️ **Capacity Planning** — Service levels & handling times", expanded=False):
+    with st.expander("⚙️ **Kapazitätsplanung** — Service Level & Bearbeitungszeiten", expanded=False):
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
@@ -684,17 +684,17 @@ def compact_config():
                 max_value=99,
                 value=80,
                 step=5,
-                help="Target % of calls answered within wait time"
+                help="Ziel-% der Anrufe, die innerhalb der Wartezeit angenommen werden. Branchenstandard: 80/20 (80% in 20 Sek.)"
             )
         
         with col2:
             wait_time = st.number_input(
-                "Wait Time (sec)",
+                "Wartezeit (Sek.)",
                 min_value=5,
                 max_value=120,
                 value=20,
                 step=5,
-                help="Max acceptable wait time"
+                help="Maximal akzeptable Wartezeit für Anrufer"
             )
         
         with col3:
@@ -704,43 +704,43 @@ def compact_config():
                 max_value=50,
                 value=30,
                 step=5,
-                help="Agent unavailability factor"
+                help="Zeit, in der Agenten nicht verfügbar sind (Pausen, Schulungen, Meetings, Krankheit). Typisch: 25-35%"
             )
         
         with col4:
             aht_calls = st.number_input(
-                "Calls AHT (min)",
+                "AHT Anrufe (Min)",
                 value=5.0,
                 min_value=1.0,
                 max_value=30.0,
                 step=0.5,
-                help="Avg handle time for calls"
+                help="Durchschnittliche Bearbeitungszeit pro Anruf (inkl. Nachbearbeitung)"
             )
         
         with col5:
             aht_emails = st.number_input(
-                "Emails AHT (min)",
+                "AHT E-Mails (Min)",
                 value=8.0,
                 min_value=1.0,
                 max_value=30.0,
                 step=0.5,
-                help="Avg handle time for emails"
+                help="Durchschnittliche Bearbeitungszeit pro E-Mail"
             )
         
         with col6:
             aht_outbound = st.number_input(
-                "Outbound AHT (min)",
+                "AHT Outbound (Min)",
                 value=6.0,
                 min_value=1.0,
                 max_value=30.0,
                 step=0.5,
-                help="Avg handle time for outbound"
+                help="Durchschnittliche Bearbeitungszeit für Outbound-Kontakte (OOK, OMK, NB)"
             )
     
     # Business Metrics Config - Monthly Values
-    with st.expander("📊 **Business Metrics** — Monthly leads & growth targets", expanded=False):
-        st.markdown("##### Monthly Business Targets")
-        st.caption("Set targets for each month. Contact Rate = Leads / Total Contacts (Calls + Emails + Outbound)")
+    with st.expander("📊 **Geschäftskennzahlen** — Monatliche Leads & Wachstumsziele", expanded=False):
+        st.markdown("##### Monatliche Geschäftsziele")
+        st.caption("Ziele für jeden Monat festlegen. Kontaktrate = Leads / Gesamtkontakte (Anrufe + E-Mails + Outbound)")
         
         # Initialize business metrics in session state if not present
         if "business_metrics" not in st.session_state:
@@ -749,18 +749,18 @@ def compact_config():
         # Get current year and create month options
         current_year = datetime.now().year
         months = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
+            "Januar", "Februar", "März", "April", "Mai", "Juni",
+            "Juli", "August", "September", "Oktober", "November", "Dezember"
         ]
         
         # Year selector
         col_year, col_spacer = st.columns([1, 3])
         with col_year:
             selected_year = st.selectbox(
-                "Year",
+                "Jahr",
                 options=[current_year, current_year + 1],
                 index=0,
-                help="Select year for business metrics"
+                help="Jahr für Geschäftskennzahlen auswählen"
             )
         
         # Create tabs for each month
@@ -777,41 +777,41 @@ def compact_config():
                 
                 with col_a:
                     leads = st.number_input(
-                        "Created Leads",
+                        "Erstellte Leads",
                         min_value=0,
                         max_value=100000,
                         value=existing.get("leads", 0),
                         step=100,
                         key=f"leads_{month_key}",
-                        help=f"Number of leads created in {month_name}"
+                        help=f"Anzahl der im {month_name} erstellten Leads"
                     )
                 
                 with col_b:
                     growth_pct = st.number_input(
-                        "Expected Growth %",
+                        "Erw. Wachstum %",
                         min_value=-50.0,
                         max_value=200.0,
                         value=existing.get("growth_pct", 0.0),
                         step=1.0,
                         key=f"growth_{month_key}",
-                        help="Growth adjustment on top of leads forecast"
+                        help="Prozentuale Wachstumsanpassung auf die Lead-Prognose"
                     )
                 
                 with col_c:
                     contact_rate = st.number_input(
-                        "Contact Rate %",
+                        "Kontaktrate %",
                         min_value=0.0,
                         max_value=100.0,
                         value=existing.get("contact_rate", 0.0),
                         step=0.5,
                         key=f"contact_rate_{month_key}",
-                        help="Leads / Total Contacts × 100"
+                        help="Leads / Gesamtkontakte × 100. Zeigt, wie viele Kontakte zu einem Lead führen."
                     )
                 
                 # Calculate adjusted leads
                 adjusted_leads = int(leads * (1 + growth_pct / 100))
                 if leads > 0:
-                    st.caption(f"📈 Adjusted Leads (with growth): **{adjusted_leads:,}**")
+                    st.caption(f"📈 Angepasste Leads (mit Wachstum): **{adjusted_leads:,}**")
                 
                 # Store in session state
                 st.session_state.business_metrics[month_key] = {
@@ -823,7 +823,7 @@ def compact_config():
         
         # Summary row
         st.markdown("---")
-        st.markdown("##### Annual Summary")
+        st.markdown("##### Jahresübersicht")
         
         total_leads = sum(
             m.get("leads", 0) 
@@ -891,13 +891,13 @@ def data_upload_section():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("### Upload Your Data")
+        st.markdown("### Daten hochladen")
         
         uploaded_files = st.file_uploader(
-            "Upload CSV or Excel files",
+            "CSV- oder Excel-Dateien hochladen",
             type=["csv", "xlsx", "xls"],
             accept_multiple_files=True,
-            help="Upload historical data for calls, emails, and outbound tasks"
+            help="Historische Daten für Anrufe, E-Mails und Outbound-Aufgaben hochladen"
         )
         
         if uploaded_files:
@@ -906,46 +906,46 @@ def data_upload_section():
                 save_path = DATA_RAW / uploaded_file.name
                 with open(save_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
-                st.success(f"✅ Saved: {uploaded_file.name}")
+                st.success(f"✅ Gespeichert: {uploaded_file.name}")
     
     with col2:
-        st.markdown("### Or Use Sample Data")
+        st.markdown("### Oder Beispieldaten verwenden")
         
-        if st.button("🎲 Generate Sample Data", type="primary"):
-            with st.spinner("Generating sample data..."):
+        if st.button("🎲 Beispieldaten generieren", type="primary"):
+            with st.spinner("Generiere Beispieldaten..."):
                 create_sample_data(DATA_RAW)
-            st.success("✅ Sample data generated!")
+            st.success("✅ Beispieldaten generiert!")
             st.session_state.data_loaded = False
     
     # Load data button
     st.markdown("---")
     
-    if st.button("📊 Load Data", type="primary"):
-        with st.spinner("Loading data..."):
+    if st.button("📊 Daten laden", type="primary"):
+        with st.spinner("Lade Daten..."):
             try:
                 loader = DataLoader()
                 data = loader.load_all()
                 
                 if not data:
-                    st.error("No data files found. Please upload data or generate sample data.")
+                    st.error("Keine Datendateien gefunden. Bitte Daten hochladen oder Beispieldaten generieren.")
                     return
                 
                 combined = loader.combine_data()
                 st.session_state.combined_data = combined
                 st.session_state.data_loaded = True
                 st.session_state.loader = loader
-                st.success(f"✅ Loaded {len(combined)} hourly records")
+                st.success(f"✅ {len(combined)} stündliche Datensätze geladen")
             except Exception as e:
-                st.error(f"Error loading data: {str(e)}")
+                st.error(f"Fehler beim Laden der Daten: {str(e)}")
 
 
 def data_exploration_section():
     """Render data exploration section."""
     if not st.session_state.data_loaded:
-        st.info("👆 Please load data first")
+        st.info("👆 Bitte zuerst Daten laden")
         return
     
-    st.markdown("## 🔍 Data Exploration")
+    st.markdown("## 🔍 Datenexploration")
     
     data = st.session_state.combined_data
     
@@ -954,34 +954,34 @@ def data_exploration_section():
     
     with col1:
         st.metric(
-            "Total Records", 
+            "Datensätze gesamt", 
             f"{len(data):,}",
-            help="Total number of hourly data points in the loaded dataset"
+            help="Gesamtzahl der stündlichen Datenpunkte im geladenen Datensatz"
         )
     with col2:
         date_range = (data["timestamp"].max() - data["timestamp"].min()).days
         st.metric(
-            "Date Range", 
-            f"{date_range} days",
-            help="Time span covered by the data, from first to last timestamp"
+            "Zeitraum", 
+            f"{date_range} Tage",
+            help="Zeitspanne der Daten, vom ersten bis zum letzten Zeitstempel"
         )
     with col3:
         if "call_volume" in data.columns:
             st.metric(
-                "Avg Daily Calls", 
+                "Ø Anrufe/Tag", 
                 f"{data['call_volume'].sum() / date_range:.0f}",
-                help="Average number of inbound calls received per day"
+                help="Durchschnittliche Anzahl eingehender Anrufe pro Tag"
             )
     with col4:
         if "email_count" in data.columns:
             st.metric(
-                "Avg Daily Emails", 
+                "Ø E-Mails/Tag", 
                 f"{data['email_count'].sum() / date_range:.0f}",
-                help="Average number of customer emails received per day"
+                help="Durchschnittliche Anzahl eingehender E-Mails pro Tag"
             )
     
     # Time series plot
-    st.markdown("### Volume Over Time")
+    st.markdown("### Volumen über Zeit")
     
     # Resample to daily for cleaner visualization
     daily = data.set_index("timestamp").resample("D").sum().reset_index()
@@ -1108,33 +1108,33 @@ def _render_model_status():
     model_type = st.session_state.get("model_type", "None")
     
     if source == "none" or not st.session_state.get("model_trained", False):
-        st.warning("⚠️ **No model loaded.** Train a new model or load a saved one to generate forecasts.")
+        st.warning("⚠️ **Kein Modell geladen.** Trainieren Sie ein neues Modell oder laden Sie ein gespeichertes, um Prognosen zu erstellen.")
     elif source == "loaded":
-        st.success(f"✅ **Model Loaded:** {model_type} (v{version}) — Ready for forecasting")
+        st.success(f"✅ **Modell geladen:** {model_type} (v{version}) — Bereit für Prognosen")
     elif source == "trained":
-        st.success(f"✅ **Model Trained:** {model_type} — Ready for forecasting (unsaved)")
-        st.caption("💡 Save your model to reuse it without retraining.")
+        st.success(f"✅ **Modell trainiert:** {model_type} — Bereit für Prognosen (nicht gespeichert)")
+        st.caption("💡 Speichern Sie Ihr Modell, um es ohne erneutes Training wiederzuverwenden.")
 
 
 def _render_load_model_panel(model_manager: ModelManager):
     """Render the Load Model panel."""
-    st.markdown("### Load Saved Model")
-    st.caption("Load a previously trained model to generate forecasts without retraining.")
+    st.markdown("### Gespeichertes Modell laden")
+    st.caption("Laden Sie ein zuvor trainiertes Modell, um Prognosen ohne erneutes Training zu erstellen.")
     
     # Get available models
     all_models = model_manager.list_all_models()
     
     if not all_models:
-        st.info("📭 No saved models found. Train and save a model first.")
+        st.info("📭 Keine gespeicherten Modelle gefunden. Trainieren und speichern Sie zuerst ein Modell.")
         return
     
     # Model selector
     model_ids = list(all_models.keys())
     selected_model_id = st.selectbox(
-        "Select Model",
+        "Modell auswählen",
         model_ids,
-        format_func=lambda x: f"{x} ({len(all_models[x])} versions)",
-        help="Choose which model to load"
+        format_func=lambda x: f"{x} ({len(all_models[x])} Versionen)",
+        help="Wählen Sie das zu ladende Modell"
     )
     
     if selected_model_id:
@@ -1143,10 +1143,10 @@ def _render_load_model_panel(model_manager: ModelManager):
         # Version selector
         version_options = [(v.version, v) for v in reversed(versions)]  # Latest first
         selected_version = st.selectbox(
-            "Select Version",
+            "Version auswählen",
             [v[0] for v in version_options],
-            format_func=lambda v: f"v{v}" + (" (Active)" if next((x[1] for x in version_options if x[0] == v), None).is_active else ""),
-            help="Choose which version to load"
+            format_func=lambda v: f"v{v}" + (" (Aktiv)" if next((x[1] for x in version_options if x[0] == v), None).is_active else ""),
+            help="Wählen Sie die zu ladende Version"
         )
         
         # Get selected metadata
@@ -1154,29 +1154,30 @@ def _render_load_model_panel(model_manager: ModelManager):
         
         if selected_metadata:
             # Display metadata
-            st.markdown("#### Model Details")
+            st.markdown("#### Modelldetails")
             
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Model Type", selected_metadata.model_type)
-                st.metric("Training Samples", f"{selected_metadata.training_samples:,}")
+                st.metric("Modelltyp", selected_metadata.model_type)
+                st.metric("Trainingssamples", f"{selected_metadata.training_samples:,}")
             with col2:
-                st.metric("Created", selected_metadata.created_at.strftime("%Y-%m-%d %H:%M"))
-                st.metric("Created By", selected_metadata.created_by)
+                st.metric("Erstellt am", selected_metadata.created_at.strftime("%d.%m.%Y %H:%M"))
+                st.metric("Erstellt von", selected_metadata.created_by)
             with col3:
                 if selected_metadata.training_date_range[0]:
-                    st.metric("Data Range", f"{selected_metadata.training_date_range[0][:10]} to {selected_metadata.training_date_range[1][:10]}")
+                    st.metric("Datenbereich", f"{selected_metadata.training_date_range[0][:10]} bis {selected_metadata.training_date_range[1][:10]}")
                 if selected_metadata.metrics:
                     first_target = list(selected_metadata.metrics.keys())[0]
                     if "rmse" in selected_metadata.metrics[first_target]:
-                        st.metric("RMSE", f"{selected_metadata.metrics[first_target]['rmse']:.2f}")
+                        st.metric("RMSE", f"{selected_metadata.metrics[first_target]['rmse']:.2f}",
+                            help="Wurzel des mittleren quadratischen Fehlers. Je niedriger, desto besser.")
             
             if selected_metadata.description:
                 st.info(f"📝 {selected_metadata.description}")
             
             # Load button
-            if st.button("📥 Load Model", type="primary", use_container_width=True):
-                with st.spinner("Loading model..."):
+            if st.button("📥 Modell laden", type="primary", use_container_width=True):
+                with st.spinner("Lade Modell..."):
                     try:
                         # load_model returns (model, metadata) tuple
                         loaded_model, loaded_metadata = model_manager.load_model(selected_model_id, selected_version)
@@ -1189,11 +1190,11 @@ def _render_load_model_panel(model_manager: ModelManager):
                         st.session_state.model_metadata = loaded_metadata
                         st.session_state.training_metrics = loaded_metadata.metrics
                         
-                        st.success(f"✅ Model loaded successfully: {selected_model_id} v{selected_version}")
+                        st.success(f"✅ Modell erfolgreich geladen: {selected_model_id} v{selected_version}")
                         st.rerun()
                         
                     except Exception as e:
-                        st.error(f"Error loading model: {str(e)}")
+                        st.error(f"Fehler beim Laden des Modells: {str(e)}")
                         import traceback
                         st.code(traceback.format_exc())
 
@@ -1201,16 +1202,16 @@ def _render_load_model_panel(model_manager: ModelManager):
 def _render_train_model_panel(model_manager: ModelManager):
     """Render the Train Model panel."""
     if not st.session_state.data_loaded:
-        st.info("👆 Please load data first in the Data tab")
+        st.info("👆 Bitte laden Sie zuerst Daten im Daten-Tab")
         return
     
-    st.markdown("### Train New Model")
+    st.markdown("### Neues Modell trainieren")
     
     # Model selection
-    model_options = ["Prophet (Recommended)"]
+    model_options = ["Prophet (Empfohlen)"]
     if not PROPHET_AVAILABLE:
         model_options = ["Gradient Boosting"]
-        st.warning("⚠️ Prophet not available. Using Gradient Boosting fallback.")
+        st.warning("⚠️ Prophet nicht verfügbar. Verwende Gradient Boosting als Fallback.")
     else:
         model_options.append("Gradient Boosting (Legacy)")
     
@@ -1218,59 +1219,59 @@ def _render_train_model_panel(model_manager: ModelManager):
     
     with col1:
         model_type = st.selectbox(
-            "Select Model Type",
+            "Modelltyp auswählen",
             model_options,
-            help="Prophet is recommended for complex seasonality (daily, weekly, yearly patterns)"
+            help="Prophet wird für komplexe Saisonalität empfohlen (tägliche, wöchentliche, jährliche Muster)"
         )
     
     with col2:
         if "Prophet" in model_type:
-            st.info("🔮 **Prophet**: Best for seasonal patterns, holidays, long-term forecasts")
+            st.info("🔮 **Prophet**: Ideal für saisonale Muster, Feiertage, Langzeitprognosen")
         else:
-            st.info("🌲 **Gradient Boosting**: Fast training, good for short-term forecasts")
+            st.info("🌲 **Gradient Boosting**: Schnelles Training, gut für Kurzzeit-Prognosen")
     
     # Prophet-specific settings
     if "Prophet" in model_type and PROPHET_AVAILABLE:
-        with st.expander("⚙️ Prophet Settings", expanded=False):
+        with st.expander("⚙️ Prophet-Einstellungen", expanded=False):
             prophet_col1, prophet_col2 = st.columns(2)
             
             with prophet_col1:
                 seasonality_mode = st.selectbox(
-                    "Seasonality Mode",
+                    "Saisonalitätsmodus",
                     ["multiplicative", "additive"],
-                    help="Multiplicative: seasonal effects scale with trend. Additive: constant seasonal effects."
+                    help="Multiplikativ: Saisonale Effekte skalieren mit dem Trend. Additiv: Konstante saisonale Effekte."
                 )
-                yearly_seasonality = st.checkbox("Yearly Seasonality", value=True,
-                    help="Capture yearly patterns (e.g., Christmas, summer)")
-                weekly_seasonality = st.checkbox("Weekly Seasonality", value=True,
-                    help="Capture day-of-week patterns")
+                yearly_seasonality = st.checkbox("Jährliche Saisonalität", value=True,
+                    help="Erfasst jährliche Muster (z.B. Weihnachten, Sommer)")
+                weekly_seasonality = st.checkbox("Wöchentliche Saisonalität", value=True,
+                    help="Erfasst Wochentagsmuster (z.B. geschäftige Montage)")
             
             with prophet_col2:
                 changepoint_scale = st.slider(
-                    "Trend Flexibility",
+                    "Trend-Flexibilität",
                     min_value=0.01,
                     max_value=0.5,
                     value=0.05,
-                    help="Higher = more flexible trend (may overfit)"
+                    help="Höher = flexiblerer Trend (kann zu Überanpassung führen)"
                 )
-                daily_seasonality = st.checkbox("Daily Seasonality", value=True,
-                    help="Capture hour-of-day patterns")
-                include_holidays = st.checkbox("German Holidays", value=True,
-                    help="Include German public holidays and special events")
+                daily_seasonality = st.checkbox("Tägliche Saisonalität", value=True,
+                    help="Erfasst Tagesstunden-Muster (z.B. ruhige Vormittage, geschäftige Nachmittage)")
+                include_holidays = st.checkbox("Deutsche Feiertage", value=True,
+                    help="Deutsche Feiertage und besondere Ereignisse einbeziehen")
     else:
         test_days = st.slider(
-            "Validation Period (days)",
+            "Validierungszeitraum (Tage)",
             min_value=7,
             max_value=30,
             value=14,
-            help="Number of days to use for model validation"
+            help="Anzahl der Tage für die Modellvalidierung"
         )
     
     # Train button
     st.markdown("---")
     
-    if st.button("🚀 Train Model", type="primary", use_container_width=True, key="train_btn"):
-        with st.spinner("Training models... This may take a few minutes."):
+    if st.button("🚀 Modell trainieren", type="primary", use_container_width=True, key="train_btn"):
+        with st.spinner("Trainiere Modelle... Dies kann einige Minuten dauern."):
             try:
                 data = st.session_state.combined_data
                 
@@ -1297,7 +1298,7 @@ def _render_train_model_panel(model_manager: ModelManager):
                     st.session_state.training_metrics = metrics
                     st.session_state.model_type = "Prophet"
                     
-                    st.success("✅ Prophet model trained successfully!")
+                    st.success("✅ Prophet-Modell erfolgreich trainiert!")
                     
                 else:
                     preprocessor = Preprocessor()
@@ -1315,12 +1316,12 @@ def _render_train_model_panel(model_manager: ModelManager):
                     st.session_state.training_metrics = metrics
                     st.session_state.model_type = "GradientBoosting"
                     
-                    st.success("✅ Gradient Boosting model trained successfully!")
+                    st.success("✅ Gradient Boosting-Modell erfolgreich trainiert!")
                 
                 st.rerun()
                 
             except Exception as e:
-                st.error(f"Error training model: {str(e)}")
+                st.error(f"Fehler beim Trainieren des Modells: {str(e)}")
                 import traceback
                 st.code(traceback.format_exc())
     
@@ -1333,34 +1334,34 @@ def _render_train_model_panel(model_manager: ModelManager):
 def _render_save_model_panel(model_manager: ModelManager):
     """Render the Save Model panel."""
     st.markdown("---")
-    st.markdown("### 💾 Save Model")
+    st.markdown("### 💾 Modell speichern")
     
     # Only show if model was just trained (not loaded)
     if st.session_state.get("model_source") == "loaded":
-        st.info("ℹ️ This model was loaded from disk. No need to save again.")
+        st.info("ℹ️ Dieses Modell wurde bereits geladen. Erneutes Speichern nicht nötig.")
         return
     
     col1, col2 = st.columns([2, 1])
     
     with col1:
         model_name = st.text_input(
-            "Model Name",
+            "Modellname",
             value="workload_forecaster",
-            help="Identifier for this model (use underscores, no spaces)"
+            help="Bezeichner für dieses Modell (Unterstriche erlaubt, keine Leerzeichen)"
         )
         model_description = st.text_area(
-            "Description (optional)",
-            placeholder="e.g., Trained on Jan-Jun 2026 data with daily seasonality",
-            help="Add notes about this model version"
+            "Beschreibung (optional)",
+            placeholder="z.B. Trainiert mit Jan-Jun 2026 Daten mit täglicher Saisonalität",
+            help="Notizen zu dieser Modellversion hinzufügen"
         )
     
     with col2:
-        st.markdown("**Save Options**")
-        set_active = st.checkbox("Set as Active", value=True, 
-            help="Make this the default model for forecasting")
+        st.markdown("**Speicheroptionen**")
+        set_active = st.checkbox("Als aktiv setzen", value=True, 
+            help="Dieses Modell als Standard für Prognosen festlegen")
     
-    if st.button("💾 Save Model", type="secondary", use_container_width=True):
-        with st.spinner("Saving model..."):
+    if st.button("💾 Modell speichern", type="secondary", use_container_width=True):
+        with st.spinner("Speichere Modell..."):
             try:
                 forecaster = st.session_state.forecaster
                 data = st.session_state.get("combined_data")
@@ -1391,7 +1392,7 @@ def _render_save_model_panel(model_manager: ModelManager):
                 st.session_state.model_version = metadata.version
                 st.session_state.model_metadata = metadata
                 
-                st.success(f"✅ Model saved as **{model_name}** v{metadata.version}")
+                st.success(f"✅ Modell gespeichert als **{model_name}** v{metadata.version}")
                 st.rerun()
                 
             except Exception as e:
@@ -1403,7 +1404,7 @@ def _render_save_model_panel(model_manager: ModelManager):
 def _render_training_metrics():
     """Render training metrics display."""
     model_name = st.session_state.get("model_type", "Unknown")
-    st.markdown(f"### Training Metrics ({model_name})")
+    st.markdown(f"### Trainingsmetriken ({model_name})")
     
     metrics = st.session_state.training_metrics
     
@@ -1414,22 +1415,22 @@ def _render_training_metrics():
         with cols[i % n_cols]:
             st.markdown(f"**{target.replace('_', ' ').title()}**")
             st.metric("RMSE", f"{m['rmse']:.2f}",
-                help="Root Mean Square Error: Average prediction error magnitude. Lower is better.")
+                help="Wurzel des mittleren quadratischen Fehlers: Durchschnittliche Fehlergröße. Je niedriger, desto besser.")
             st.metric("MAE", f"{m['mae']:.2f}",
-                help="Mean Absolute Error: Average absolute difference between predicted and actual values.")
+                help="Mittlerer absoluter Fehler: Durchschnittliche Abweichung zwischen Prognose und Ist-Werten in Einheiten.")
             st.metric("R²", f"{m['r2']:.3f}",
-                help="R-squared: Proportion of variance explained. 1.0 = perfect prediction.")
+                help="Bestimmtheitsmaß: Anteil der erklärten Varianz. 1.0 = perfekte Vorhersage, >0.8 = gut.")
             st.metric("MAPE", f"{m['mape']:.1f}%",
-                help="Mean Absolute Percentage Error. <10% excellent, 10-20% good.")
+                help="Mittlerer absoluter prozentualer Fehler. <10% ausgezeichnet, 10-20% gut, >20% verbesserungswürdig.")
     
     # Model-specific visualizations (outside the metrics loop)
     if st.session_state.get("model_type") == "Prophet" and PROPHET_AVAILABLE:
-        st.markdown("### 📊 Prophet Components")
-        st.info("Prophet automatically decomposes your data into trend, weekly, and yearly patterns.")
+        st.markdown("### 📊 Prophet-Komponenten")
+        st.info("Prophet zerlegt Ihre Daten automatisch in Trend, wöchentliche und jährliche Muster (Saisonalität).")
         
         forecaster = st.session_state.forecaster
         
-        with st.expander("View Seasonality Patterns", expanded=False):
+        with st.expander("Saisonalitätsmuster anzeigen", expanded=False):
             try:
                 target = list(forecaster.models.keys())[0]
                 model = forecaster.models[target]
@@ -1442,7 +1443,7 @@ def _render_training_metrics():
                 
                 # Weekly pattern
                 weekly_pattern = forecast.groupby(forecast['ds'].dt.dayofweek)['weekly'].mean()
-                days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
                 
                 fig_weekly = go.Figure()
                 fig_weekly.add_trace(go.Bar(
@@ -1451,20 +1452,20 @@ def _render_training_metrics():
                     marker_color='#667eea'
                 ))
                 fig_weekly.update_layout(
-                    title=f"Weekly Pattern: {target.replace('_', ' ').title()}",
-                    xaxis_title="Day of Week",
-                    yaxis_title="Effect",
+                    title=f"Wöchentliches Muster: {target.replace('_', ' ').title()}",
+                    xaxis_title="Wochentag",
+                    yaxis_title="Effekt",
                     height=300
                 )
                 st.plotly_chart(fig_weekly, use_container_width=True, key="prophet_weekly_pattern")
                 
             except Exception as e:
-                st.warning(f"Could not display components: {e}")
+                st.warning(f"Komponenten konnten nicht angezeigt werden: {e}")
     
     elif st.session_state.get("model_type") == "GradientBoosting":
         # Feature importance for gradient boosting
         if hasattr(st.session_state.forecaster, 'get_feature_importance'):
-            st.markdown("### Feature Importance")
+            st.markdown("### Feature-Wichtigkeit")
             
             importance = st.session_state.forecaster.get_feature_importance()
             if len(importance) > 0:
@@ -1475,7 +1476,7 @@ def _render_training_metrics():
                     x="avg_importance",
                     y="feature",
                     orientation="h",
-                    title=f"Top {top_n} Most Important Features"
+                    title=f"Top {top_n} wichtigste Features"
                 )
                 fig.update_layout(yaxis=dict(autorange="reversed"))
                 st.plotly_chart(fig, use_container_width=True, key="gb_feature_importance")
@@ -1484,13 +1485,13 @@ def _render_training_metrics():
 def forecast_section(capacity_config: CapacityConfig):
     """Render forecast generation section."""
     if not st.session_state.model_trained:
-        st.info("👆 Please train the model first")
+        st.info("👆 Bitte zuerst das Modell trainieren")
         return
     
-    st.markdown("## 🔮 Generate Forecast")
+    st.markdown("## 🔮 Prognose erstellen")
     
     model_type = st.session_state.get("model_type", "Unknown")
-    st.caption(f"Using: **{model_type}** model")
+    st.caption(f"Verwendetes Modell: **{model_type}**")
     
     # Get the last date in the training data
     data = st.session_state.combined_data
@@ -1503,77 +1504,77 @@ def forecast_section(capacity_config: CapacityConfig):
     # For Prophet, we can forecast further ahead
     max_forecast_days = 60 if model_type == "Prophet" else 30
     
-    st.markdown("### Select Forecast Period")
+    st.markdown("### Prognosezeitraum wählen")
     
     col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
         forecast_start = st.date_input(
-            "Start Date",
+            "Startdatum",
             value=default_start,
             min_value=default_start,
             max_value=default_start + timedelta(days=90),
-            help="First day to forecast (must be after training data ends)"
+            help="Erster Prognosetag (muss nach den Trainingsdaten liegen)"
         )
     
     with col2:
         forecast_end = st.date_input(
-            "End Date",
+            "Enddatum",
             value=default_end,
             min_value=forecast_start,
             max_value=forecast_start + timedelta(days=max_forecast_days),
-            help=f"Last day to forecast (max {max_forecast_days} days from start)"
+            help=f"Letzter Prognosetag (max. {max_forecast_days} Tage ab Start)"
         )
     
     with col3:
         # Calculate and display forecast duration
         forecast_days = (forecast_end - forecast_start).days + 1
         st.metric(
-            "Forecast Duration", 
-            f"{forecast_days} days",
-            help="Number of days the forecast covers. Longer forecasts have higher uncertainty."
+            "Prognosedauer", 
+            f"{forecast_days} Tage",
+            help="Anzahl der Tage, die die Prognose abdeckt. Längere Prognosen haben höhere Unsicherheit."
         )
     
     # Show date range info
-    st.info(f"📅 **Forecast Period:** {forecast_start.strftime('%A, %B %d, %Y')} to {forecast_end.strftime('%A, %B %d, %Y')} ({forecast_days} days, {forecast_days * 24} hours)")
+    st.info(f"📅 **Prognosezeitraum:** {forecast_start.strftime('%d.%m.%Y')} bis {forecast_end.strftime('%d.%m.%Y')} ({forecast_days} Tage, {forecast_days * 24} Stunden)")
     
     # Adjustment Factors
-    st.markdown("### 📊 Adjustment Factors")
-    with st.expander("Apply multipliers to adjust forecast (e.g., for marketing campaigns)", expanded=False):
-        st.caption("These multipliers are applied **after** the model generates the base forecast. Use positive values to increase, negative to decrease.")
+    st.markdown("### 📊 Anpassungsfaktoren")
+    with st.expander("Multiplikatoren zur Prognose-Anpassung (z.B. für Marketing-Kampagnen)", expanded=False):
+        st.caption("Diese Multiplikatoren werden **nach** der Basisprognose angewendet. Positive Werte erhöhen, negative verringern die Prognose.")
         
         adj_col1, adj_col2, adj_col3 = st.columns(3)
         
         with adj_col1:
             call_adj = st.number_input(
-                "Calls Adjustment %",
+                "Anrufe Anpassung %",
                 min_value=-50,
                 max_value=200,
                 value=st.session_state.adjustment_factors.get("call_volume", 0),
                 step=5,
-                help="e.g., +20% for expected marketing push"
+                help="z.B. +20% für erwarteten Marketing-Push"
             )
             st.session_state.adjustment_factors["call_volume"] = call_adj
         
         with adj_col2:
             email_adj = st.number_input(
-                "Emails Adjustment %",
+                "E-Mails Anpassung %",
                 min_value=-50,
                 max_value=200,
                 value=st.session_state.adjustment_factors.get("email_count", 0),
                 step=5,
-                help="e.g., +30% after newsletter send"
+                help="z.B. +30% nach Newsletter-Versand"
             )
             st.session_state.adjustment_factors["email_count"] = email_adj
         
         with adj_col3:
             outbound_adj = st.number_input(
-                "Outbound Adjustment %",
+                "Outbound Anpassung %",
                 min_value=-50,
                 max_value=200,
                 value=st.session_state.adjustment_factors.get("outbound_ook", 0),
                 step=5,
-                help="Applies to all outbound types (OOK, OMK, NB)"
+                help="Gilt für alle Outbound-Typen (OOK, OMK, NB)"
             )
             st.session_state.adjustment_factors["outbound_ook"] = outbound_adj
             st.session_state.adjustment_factors["outbound_omk"] = outbound_adj
@@ -1583,13 +1584,13 @@ def forecast_section(capacity_config: CapacityConfig):
         if any(v != 0 for v in st.session_state.adjustment_factors.values()):
             active_adjustments = [f"{k.replace('_', ' ').title()}: {v:+d}%" 
                                   for k, v in st.session_state.adjustment_factors.items() if v != 0]
-            st.success(f"🎯 Active adjustments: {', '.join(active_adjustments)}")
+            st.success(f"🎯 Aktive Anpassungen: {', '.join(active_adjustments)}")
         else:
-            st.caption("No adjustments applied - using base forecast.")
+            st.caption("Keine Anpassungen – Basisprognose wird verwendet.")
     
     # Generate button
-    if st.button("📈 Generate Forecast", type="primary", use_container_width=True):
-        with st.spinner(f"Generating {forecast_days}-day forecast... This may take a while."):
+    if st.button("📈 Prognose erstellen", type="primary", use_container_width=True):
+        with st.spinner(f"Erstelle {forecast_days}-Tage-Prognose... Dies kann einen Moment dauern."):
             try:
                 forecaster = st.session_state.forecaster
                 
@@ -1675,13 +1676,13 @@ def forecast_section(capacity_config: CapacityConfig):
                 if "scenario_analyzer" in st.session_state:
                     del st.session_state.scenario_analyzer
                 
-                success_msg = f"✅ Generated forecast for {forecast_start} to {forecast_end} ({len(forecast_df)} hours)"
+                success_msg = f"✅ Prognose erstellt für {forecast_start.strftime('%d.%m.%Y')} bis {forecast_end.strftime('%d.%m.%Y')} ({len(forecast_df)} Stunden)"
                 if adjustment_applied:
-                    success_msg += " — *Adjustments applied*"
+                    success_msg += " — *Anpassungen angewendet*"
                 st.success(success_msg)
                 
             except Exception as e:
-                st.error(f"Error generating forecast: {str(e)}")
+                st.error(f"Fehler beim Erstellen der Prognose: {str(e)}")
                 import traceback
                 st.code(traceback.format_exc())
 
@@ -1910,41 +1911,41 @@ def results_section():
         
         with col_m1:
             st.metric(
-                "Peak Staffing",
-                f"{int(weekly_schedule.values.max())} agents",
-                help="Maximum agents needed at any single hour"
+                "Spitzenbedarf",
+                f"{int(weekly_schedule.values.max())} Agenten",
+                help="Maximale Anzahl benötigter Agenten in einer Stunde"
             )
         
         with col_m2:
             st.metric(
-                "Avg Staffing",
-                f"{weekly_schedule.values.mean():.1f} agents",
-                help="Average agents needed across all hours"
+                "Ø Bedarf",
+                f"{weekly_schedule.values.mean():.1f} Agenten",
+                help="Durchschnittliche Anzahl benötigter Agenten über alle Stunden"
             )
         
         with col_m3:
             # Find busiest day
             busiest_day = weekly_schedule.mean(axis=1).idxmax()
             st.metric(
-                "Busiest Day",
+                "Geschäftigster Tag",
                 busiest_day,
-                help="Day with highest average staffing need"
+                help="Tag mit dem höchsten durchschnittlichen Personalbedarf"
             )
         
         with col_m4:
             # Find peak hour
             peak_hour = weekly_schedule.mean(axis=0).idxmax()
             st.metric(
-                "Peak Hour",
+                "Spitzenstunde",
                 f"{peak_hour}:00",
-                help="Hour with highest average staffing need"
+                help="Stunde mit dem höchsten durchschnittlichen Personalbedarf"
             )
         
         # Breakdown by task type if available
         agent_cols = [c for c in staffing_plan.columns if c.endswith("_agents") and c != "total_agents"]
         
         if agent_cols:
-            st.markdown("### 📊 Staffing by Task Type")
+            st.markdown("### 📊 Personal nach Aufgabentyp")
             
             # Create tabs for each task type
             task_tabs = st.tabs([col.replace("_agents", "").replace("_", " ").title() for col in agent_cols])
@@ -1984,18 +1985,18 @@ def results_section():
 def export_section():
     """Render export section."""
     if not st.session_state.forecast_generated:
-        st.info("👆 Please generate a forecast first")
+        st.info("👆 Bitte zuerst eine Prognose erstellen")
         return
     
-    st.markdown("## 💾 Export Results")
+    st.markdown("## 💾 Ergebnisse exportieren")
     
     forecast_df = st.session_state.forecast_df
     staffing_plan = st.session_state.staffing_plan
     
     # Format selector
-    st.markdown("### Select Export Format")
+    st.markdown("### Exportformat wählen")
     export_format = st.radio(
-        "Choose format:",
+        "Format auswählen:",
         ["Excel (.xlsx)", "CSV (.csv)"],
         horizontal=True,
         label_visibility="collapsed"
@@ -2207,23 +2208,23 @@ def render_model_diagnostics():
         # For diagnostics, we need validation data (predictions vs actuals)
         # Using the training validation split results
         if hasattr(forecaster, '_training_residuals') and forecaster._training_residuals:
-            st.success("✅ Model diagnostics available from training validation")
+            st.success("✅ Modelldiagnose aus Trainingsvalidierung verfügbar")
             
             # Get target columns
             target_cols = forecaster.target_columns
             
             # Select target to analyze
             selected_target = st.selectbox(
-                "Select target to analyze",
+                "Zielgröße auswählen",
                 target_cols,
-                help="Choose which workload type to analyze"
+                help="Wählen Sie den zu analysierenden Workload-Typ"
             )
             
             col1, col2 = st.columns(2)
             
             with col1:
                 # Residual distribution
-                st.markdown("#### Residual Distribution")
+                st.markdown("#### Residuenverteilung")
                 residuals = forecaster._training_residuals.get(selected_target, [])
                 
                 if len(residuals) > 0:
@@ -2234,7 +2235,7 @@ def render_model_diagnostics():
                     fig.add_trace(go.Histogram(
                         x=residuals,
                         nbinsx=50,
-                        name="Residuals",
+                        name="Residuen",
                         marker_color="#667eea",
                         opacity=0.7
                     ))
@@ -2247,58 +2248,58 @@ def render_model_diagnostics():
                     fig.add_trace(go.Scatter(
                         x=x_range,
                         y=normal_pdf * scale_factor,
-                        name="Normal Dist",
+                        name="Normalvert.",
                         line=dict(color="#ef4444", width=2)
                     ))
                     
                     fig.update_layout(
-                        title=f"Residual Distribution: {selected_target.replace('_', ' ').title()}",
-                        xaxis_title="Residual (Actual - Predicted)",
-                        yaxis_title="Frequency",
+                        title=f"Residuenverteilung: {selected_target.replace('_', ' ').title()}",
+                        xaxis_title="Residuum (Ist - Prognose)",
+                        yaxis_title="Häufigkeit",
                         height=350,
                         showlegend=True
                     )
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Statistics
-                    st.markdown("**Residual Statistics:**")
+                    st.markdown("**Residuen-Statistiken:**")
                     stats_col1, stats_col2, stats_col3 = st.columns(3)
                     with stats_col1:
-                        st.metric("Mean", f"{np.mean(residuals):.2f}", help="Should be close to 0 for unbiased model")
+                        st.metric("Mittelwert", f"{np.mean(residuals):.2f}", help="Sollte nahe 0 sein für unverzerrtes Modell (Bias)")
                     with stats_col2:
-                        st.metric("Std Dev", f"{np.std(residuals):.2f}", help="Lower is better")
+                        st.metric("Std.abw.", f"{np.std(residuals):.2f}", help="Je niedriger, desto besser")
                     with stats_col3:
                         # Shapiro-Wilk test for normality
                         if len(residuals) > 3:
                             _, p_val = stats.shapiro(residuals[:5000])
-                            st.metric("Normal?", "Yes" if p_val > 0.05 else "No", 
-                                     help=f"Shapiro-Wilk p-value: {p_val:.4f}")
+                            st.metric("Normal?", "Ja" if p_val > 0.05 else "Nein", 
+                                     help=f"Shapiro-Wilk p-Wert: {p_val:.4f}. Idealerweise sollten Residuen normalverteilt sein.")
             
             with col2:
                 # Training metrics
-                st.markdown("#### Training Metrics")
+                st.markdown("#### Trainingsmetriken")
                 if hasattr(forecaster, '_training_metrics') and selected_target in forecaster._training_metrics:
                     metrics = forecaster._training_metrics[selected_target]
                     
                     m_col1, m_col2 = st.columns(2)
                     with m_col1:
                         st.metric("RMSE", f"{metrics.get('rmse', 0):.2f}",
-                                 help="Root Mean Square Error")
+                                 help="Wurzel des mittleren quadratischen Fehlers. Je niedriger, desto besser.")
                         st.metric("R²", f"{metrics.get('r2', 0):.3f}",
-                                 help="Coefficient of determination")
+                                 help="Bestimmtheitsmaß: Anteil der erklärten Varianz. 1.0 = perfekt, >0.8 = gut.")
                     with m_col2:
                         st.metric("MAE", f"{metrics.get('mae', 0):.2f}",
-                                 help="Mean Absolute Error")
+                                 help="Mittlerer absoluter Fehler in Einheiten.")
                         st.metric("MAPE", f"{metrics.get('mape', 0):.1f}%",
-                                 help="Mean Absolute Percentage Error")
+                                 help="Mittlerer absoluter prozentualer Fehler. <10% ausgezeichnet, 10-20% gut.")
             
             # Error by hour/day breakdown
             st.markdown("---")
-            st.markdown("#### Error Pattern Analysis")
-            st.info("💡 If errors are higher at certain hours or days, the model may need more features for those patterns.")
+            st.markdown("#### Fehlermuster-Analyse")
+            st.info("💡 Wenn Fehler zu bestimmten Stunden oder Tagen höher sind, könnte das Modell mehr Features für diese Muster benötigen.")
             
         else:
-            st.info("📊 Detailed diagnostics require training data with validation split.")
+            st.info("📊 Detaillierte Diagnose erfordert Trainingsdaten mit Validierungssplit.")
             
     except ImportError as e:
         st.error(f"Analytics module not available: {e}")
@@ -2308,20 +2309,20 @@ def render_model_diagnostics():
 
 def render_time_series_analysis():
     """Render time series decomposition analysis."""
-    st.markdown("### 📊 Time Series Decomposition")
-    st.markdown("Analyze trend, seasonality, and patterns in your data.")
+    st.markdown("### 📊 Zeitreihenzerlegung")
+    st.markdown("Analysieren Sie Trend, Saisonalität und Muster in Ihren Daten.")
     
     data = st.session_state.combined_data
     
     if data is None or len(data) == 0:
-        st.warning("No data available")
+        st.warning("Keine Daten verfügbar")
         return
     
     try:
         from src.analytics.decomposition import TimeSeriesDecomposer, STATSMODELS_AVAILABLE
         
         if not STATSMODELS_AVAILABLE:
-            st.error("statsmodels library required. Install with: pip install statsmodels")
+            st.error("statsmodels-Bibliothek erforderlich. Installation: pip install statsmodels")
             return
         
         decomposer = TimeSeriesDecomposer()
@@ -2334,21 +2335,21 @@ def render_time_series_analysis():
         
         with col1:
             selected_col = st.selectbox(
-                "Select column to analyze",
+                "Spalte für Analyse auswählen",
                 numeric_cols,
-                help="Choose a workload column to decompose"
+                help="Wählen Sie eine Workload-Spalte zur Zerlegung"
             )
         
         with col2:
             period = st.selectbox(
-                "Seasonality period",
+                "Saisonalitäts-Periode",
                 [24, 168, 24*7],
-                format_func=lambda x: {24: "Daily (24h)", 168: "Weekly (168h)", 24*7: "Weekly"}[x],
-                help="Expected seasonal pattern length"
+                format_func=lambda x: {24: "Täglich (24h)", 168: "Wöchentlich (168h)", 24*7: "Wöchentlich"}[x],
+                help="Erwartete Länge des saisonalen Musters"
             )
         
-        if st.button("🔄 Run Decomposition", type="primary"):
-            with st.spinner("Decomposing time series..."):
+        if st.button("🔄 Zerlegung starten", type="primary"):
+            with st.spinner("Zerlege Zeitreihe..."):
                 result = decomposer.decompose(data, selected_col, period=period)
                 
                 # Store in session for reuse
@@ -2360,7 +2361,7 @@ def render_time_series_analysis():
             decomposer = st.session_state.decomposer
             
             # Decomposition plot
-            st.markdown("#### Decomposition Components")
+            st.markdown("#### Zerlegungskomponenten")
             fig = decomposer.plot_decomposition()
             st.plotly_chart(fig, use_container_width=True)
             
@@ -2373,45 +2374,45 @@ def render_time_series_analysis():
                 st.markdown("**📈 Trend**")
                 trend_dir = "📈" if summary["trend"]["direction"] == "increasing" else "📉"
                 st.metric(
-                    "Trend Direction", 
+                    "Trendrichtung", 
                     f"{trend_dir} {summary['trend']['change_percent']:+.1f}%",
-                    help="Overall change from start to end"
+                    help="Gesamtveränderung vom Anfang bis Ende. Zeigt die langfristige Entwicklung."
                 )
                 st.metric(
-                    "Trend Strength",
+                    "Trendstärke",
                     f"{summary['trend']['strength']:.2f}",
-                    help="0=no trend, 1=strong trend"
+                    help="0 = kein Trend, 1 = starker Trend"
                 )
             
             with col2:
-                st.markdown("**🔄 Seasonality**")
+                st.markdown("**🔄 Saisonalität**")
                 st.metric(
-                    "Seasonal Strength",
+                    "Saisonale Stärke",
                     f"{summary['seasonality']['strength']:.2f}",
-                    help="0=no seasonality, 1=strong seasonality"
+                    help="0 = keine Saisonalität, 1 = starke Saisonalität. Misst, wie vorhersehbar die Muster sind."
                 )
                 st.metric(
-                    "Seasonal Range",
+                    "Saisonale Spanne",
                     f"{summary['seasonality']['range']:.1f}",
-                    help="Difference between peak and trough"
+                    help="Unterschied zwischen Spitze und Tief"
                 )
             
             with col3:
-                st.markdown("**📊 Residual**")
+                st.markdown("**📊 Residuen**")
                 st.metric(
-                    "Residual Std",
+                    "Residuen Std.abw.",
                     f"{summary['residual']['std']:.2f}",
-                    help="Unexplained variation"
+                    help="Unerklärte Variation – zufällige Schwankungen, die nicht durch Trend oder Saisonalität erklärt werden."
                 )
                 st.metric(
-                    "Mean",
+                    "Mittelwert",
                     f"{summary['residual']['mean']:.2f}",
-                    help="Should be ~0"
+                    help="Sollte ~0 sein. Abweichungen deuten auf systematischen Fehler hin."
                 )
             
             # Seasonal patterns
             st.markdown("---")
-            st.markdown("#### Seasonal Patterns")
+            st.markdown("#### Saisonale Muster")
             
             pattern_col1, pattern_col2 = st.columns(2)
             
@@ -2425,23 +2426,23 @@ def render_time_series_analysis():
             
             # ACF/PACF
             st.markdown("---")
-            st.markdown("#### Autocorrelation Analysis")
-            st.markdown("Helps identify significant lags and patterns in the data.")
+            st.markdown("#### Autokorrelationsanalyse")
+            st.markdown("Hilft dabei, signifikante Verzögerungen (Lags) und Muster in den Daten zu identifizieren. Zeigt, wie stark heutige Werte mit vergangenen Werten zusammenhängen.")
             
             fig_acf = decomposer.plot_acf_pacf(data, selected_col, n_lags=48)
             st.plotly_chart(fig_acf, use_container_width=True)
             
             # Stationarity test
             st.markdown("---")
-            st.markdown("#### Stationarity Test (ADF)")
+            st.markdown("#### Stationaritätstest (ADF)")
             
             stationarity = decomposer.test_stationarity(data, selected_col)
             
             if stationarity.is_stationary:
-                st.success(f"✅ Series is **stationary** (p-value: {stationarity.p_value:.4f})")
+                st.success(f"✅ Zeitreihe ist **stationär** (p-Wert: {stationarity.p_value:.4f}) – Muster bleiben über die Zeit konsistent.")
             else:
-                st.warning(f"⚠️ Series is **non-stationary** (p-value: {stationarity.p_value:.4f})")
-                st.info("Consider differencing or detrending for some modeling approaches.")
+                st.warning(f"⚠️ Zeitreihe ist **nicht-stationär** (p-Wert: {stationarity.p_value:.4f})")
+                st.info("Nicht-stationäre Daten sind schwerer zu prognostizieren. Prophet und ARIMA können damit umgehen.")
             
     except ImportError as e:
         st.error(f"Required library not available: {e}")
@@ -2452,11 +2453,11 @@ def render_time_series_analysis():
 
 def render_forecast_confidence():
     """Render forecast confidence visualization."""
-    st.markdown("### 📉 Forecast Confidence Intervals")
-    st.markdown("Visualize prediction uncertainty and confidence bands.")
+    st.markdown("### 📉 Prognose-Konfidenzintervalle")
+    st.markdown("Visualisieren Sie die Vorhersage-Unsicherheit und Konfidenzbänder.")
     
     if not st.session_state.get("forecast_generated", False):
-        st.warning("⚠️ Generate a forecast first to see confidence intervals")
+        st.warning("⚠️ Erstellen Sie zuerst eine Prognose, um Konfidenzintervalle zu sehen")
         return
     
     forecast_df = st.session_state.forecast_df
@@ -2464,23 +2465,23 @@ def render_forecast_confidence():
     
     # Check if we have confidence intervals
     if not hasattr(st.session_state, 'forecast_result') or st.session_state.forecast_result is None:
-        st.info("Confidence intervals are calculated during forecast generation.")
-        st.info("Re-run the forecast to see confidence bands.")
+        st.info("Konfidenzintervalle werden während der Prognoseerstellung berechnet.")
+        st.info("Führen Sie die Prognose erneut aus, um Konfidenzbänder zu sehen.")
         return
     
     result = st.session_state.forecast_result
     
     if result.confidence_intervals is None:
-        st.warning("No confidence intervals available for this forecast.")
+        st.warning("Keine Konfidenzintervalle für diese Prognose verfügbar.")
         return
     
     # Select target to visualize
     target_cols = list(result.confidence_intervals.keys())
     
     selected_target = st.selectbox(
-        "Select target to visualize",
+        "Zielgröße auswählen",
         target_cols,
-        help="Choose which workload type to display"
+        help="Wählen Sie den anzuzeigenden Workload-Typ"
     )
     
     # Get confidence data
@@ -2541,7 +2542,7 @@ def render_forecast_confidence():
     st.plotly_chart(fig, use_container_width=True)
     
     # Confidence interval statistics
-    st.markdown("#### Confidence Interval Statistics")
+    st.markdown("#### Konfidenzintervall-Statistiken")
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -2552,36 +2553,36 @@ def render_forecast_confidence():
     
     with col1:
         st.metric(
-            "Avg Interval Width",
+            "Ø Intervallbreite",
             f"{avg_width:.1f}",
-            help="Average size of the confidence band"
+            help="Durchschnittliche Größe des Konfidenzbandes. Zeigt die typische Unsicherheit."
         )
     
     with col2:
         st.metric(
-            "Max Interval Width",
+            "Max. Intervallbreite",
             f"{max_width:.1f}",
-            help="Widest confidence band (highest uncertainty)"
+            help="Breitestes Konfidenzband (höchste Unsicherheit)"
         )
     
     with col3:
         st.metric(
-            "Relative Uncertainty",
+            "Relative Unsicherheit",
             f"{(avg_width / avg_pred * 100):.1f}%",
-            help="Average uncertainty as % of predicted value"
+            help="Durchschnittliche Unsicherheit in % des prognostizierten Wertes"
         )
     
     with col4:
         st.metric(
-            "Avg Prediction",
+            "Ø Prognose",
             f"{avg_pred:.1f}",
-            help="Mean predicted value"
+            help="Mittlerer prognostizierter Wert"
         )
     
     # Uncertainty over time
     st.markdown("---")
-    st.markdown("#### Uncertainty Growth Over Time")
-    st.info("💡 Confidence intervals typically widen as we forecast further into the future.")
+    st.markdown("#### Unsicherheitswachstum über Zeit")
+    st.info("💡 Konfidenzintervalle werden typischerweise breiter, je weiter in die Zukunft prognostiziert wird.")
     
     # Plot interval width over time
     interval_width = ci_data['upper'] - ci_data['lower']
@@ -2607,11 +2608,11 @@ def render_forecast_confidence():
 
 def render_scenario_analysis(capacity_config):
     """Render what-if scenario analysis."""
-    st.markdown("### 🎯 What-If Scenario Analysis")
-    st.markdown("Explore different scenarios and their impact on staffing requirements.")
+    st.markdown("### 🎯 Was-wäre-wenn Szenario-Analyse")
+    st.markdown("Erkunden Sie verschiedene Szenarien und deren Auswirkungen auf den Personalbedarf.")
     
     if not st.session_state.get("forecast_generated", False):
-        st.warning("⚠️ Generate a forecast first to run scenario analysis")
+        st.warning("⚠️ Erstellen Sie zuerst eine Prognose, um die Szenario-Analyse durchzuführen")
         return
     
     forecast_df = st.session_state.forecast_df
@@ -2634,53 +2635,53 @@ def render_scenario_analysis(capacity_config):
         analyzer = st.session_state.scenario_analyzer
         
         # Cost configuration
-        with st.expander("💰 Cost Settings", expanded=False):
+        with st.expander("💰 Kosteneinstellungen", expanded=False):
             cost_per_hour = st.number_input(
-                "Cost per agent hour (€)",
+                "Kosten pro Agentenstunde (€)",
                 value=25.0,
                 min_value=10.0,
                 max_value=100.0,
-                help="Hourly cost per agent for cost estimates"
+                help="Stündliche Kosten pro Agent für Kostenschätzungen"
             )
             analyzer.cost_per_agent_hour = cost_per_hour
         
         st.markdown("---")
         
         # Scenario creation
-        st.markdown("#### Create Custom Scenario")
+        st.markdown("#### Eigenes Szenario erstellen")
         
         col1, col2 = st.columns(2)
         
         with col1:
             scenario_name = st.text_input(
-                "Scenario Name",
-                value="My Scenario",
-                help="Give your scenario a descriptive name"
+                "Szenarioname",
+                value="Mein Szenario",
+                help="Geben Sie Ihrem Szenario einen beschreibenden Namen"
             )
             
             volume_change = st.slider(
-                "Volume Change (%)",
+                "Volumenänderung (%)",
                 min_value=-50,
                 max_value=100,
                 value=0,
                 step=5,
-                help="Increase or decrease workload volume"
+                help="Erhöhen oder verringern Sie das Workload-Volumen"
             )
         
         with col2:
             scenario_desc = st.text_input(
-                "Description",
-                value="Custom scenario",
-                help="Brief description of this scenario"
+                "Beschreibung",
+                value="Benutzerdefiniertes Szenario",
+                help="Kurze Beschreibung dieses Szenarios"
             )
             
             aht_change = st.slider(
-                "Handle Time Change (%)",
+                "Bearbeitungszeit-Änderung (%)",
                 min_value=-30,
                 max_value=50,
                 value=0,
                 step=5,
-                help="Increase or decrease average handling time"
+                help="Erhöhen oder verringern Sie die durchschnittliche Bearbeitungszeit (AHT)"
             )
         
         if st.button("➕ Add Scenario", type="primary"):
@@ -2843,49 +2844,49 @@ def dienstleister_view():
         aggfunc="mean"
     ).round(1)
     
-    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    day_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
     weekly_schedule.index = [day_names[i] for i in weekly_schedule.index]
     
     # Summary metrics at the top
-    st.markdown("## 📊 Quick Overview")
+    st.markdown("## 📊 Schnellübersicht")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.metric(
-            "🔝 Peak Staffing",
-            f"{int(weekly_schedule.values.max())} agents",
-            help="Maximum agents needed at any hour"
+            "🔝 Spitzenbedarf",
+            f"{int(weekly_schedule.values.max())} Agenten",
+            help="Maximale Anzahl benötigter Agenten in einer Stunde"
         )
     
     with col2:
         st.metric(
-            "📈 Average Staffing",
-            f"{weekly_schedule.values.mean():.1f} agents",
-            help="Average agents across all hours"
+            "📈 Ø Bedarf",
+            f"{weekly_schedule.values.mean():.1f} Agenten",
+            help="Durchschnittliche Anzahl Agenten über alle Stunden"
         )
     
     with col3:
         busiest_day = weekly_schedule.mean(axis=1).idxmax()
         st.metric(
-            "📅 Busiest Day",
+            "📅 Geschäftigster Tag",
             busiest_day,
-            help="Day with highest staffing need"
+            help="Tag mit dem höchsten Personalbedarf"
         )
     
     with col4:
         peak_hour = weekly_schedule.mean(axis=0).idxmax()
         st.metric(
-            "⏰ Peak Hour",
+            "⏰ Spitzenstunde",
             f"{peak_hour}:00",
-            help="Hour with highest staffing need"
+            help="Stunde mit dem höchsten Personalbedarf"
         )
     
     st.markdown("---")
     
     # Weekly Heatmap
-    st.markdown("## 🗓️ Weekly Staffing Heatmap")
-    st.markdown("This shows the average number of agents needed for each hour of each day.")
+    st.markdown("## 🗓️ Wöchentliche Personalbedarfs-Heatmap")
+    st.markdown("Zeigt die durchschnittliche Anzahl benötigter Agenten für jede Stunde jedes Tages.")
     
     fig_weekly = go.Figure(data=go.Heatmap(
         z=weekly_schedule.values,
@@ -2899,8 +2900,8 @@ def dienstleister_view():
     ))
     
     fig_weekly.update_layout(
-        xaxis_title="Hour of Day",
-        yaxis_title="Day of Week",
+        xaxis_title="Tagesstunde",
+        yaxis_title="Wochentag",
         height=450,
         yaxis=dict(autorange="reversed"),
         font=dict(size=14)
@@ -2909,8 +2910,8 @@ def dienstleister_view():
     st.plotly_chart(fig_weekly, use_container_width=True)
     
     # Detailed Table
-    st.markdown("## 📋 Detailed Weekly Schedule")
-    st.markdown("Number of agents required per hour:")
+    st.markdown("## 📋 Detaillierter Wochenplan")
+    st.markdown("Anzahl benötigter Agenten pro Stunde:")
     
     weekly_table = weekly_schedule.copy()
     weekly_table.columns = [f"{h}:00" for h in weekly_table.columns]
@@ -2927,7 +2928,7 @@ def dienstleister_view():
     )
     
     # Daily breakdown
-    st.markdown("## 📆 Daily Staffing Summary")
+    st.markdown("## 📆 Tägliche Personalübersicht")
     
     if "date" in staffing_plan.columns:
         daily_summary = staffing_plan.groupby("date").agg({
@@ -3024,25 +3025,25 @@ def review_forecasts_section():
 
 def _render_actuals_upload_section():
     """Render the section for uploading actual data."""
-    st.markdown("### Upload Actual Data")
-    st.markdown("After the forecast period ends, upload your actual data to see how accurate the prediction was.")
+    st.markdown("### Ist-Daten hochladen")
+    st.markdown("Nach Ablauf des Prognosezeitraums können Sie Ihre tatsächlichen Daten hochladen, um die Genauigkeit der Vorhersage zu prüfen.")
     
     # Show current forecast info
     forecast_start = st.session_state.get("forecast_start")
     forecast_end = st.session_state.get("forecast_end")
     
     if forecast_start and forecast_end:
-        st.info(f"📅 **Current Forecast Period:** {forecast_start} to {forecast_end}")
+        st.info(f"📅 **Aktueller Prognosezeitraum:** {forecast_start.strftime('%d.%m.%Y')} bis {forecast_end.strftime('%d.%m.%Y')}")
     
     # File upload
-    st.markdown("#### Upload Actual Results")
-    st.caption("Upload a CSV or Excel file with the actual call/email/outbound volumes for the forecast period.")
+    st.markdown("#### Ist-Ergebnisse hochladen")
+    st.caption("Laden Sie eine CSV- oder Excel-Datei mit den tatsächlichen Anruf-/E-Mail-/Outbound-Volumen für den Prognosezeitraum hoch.")
     
     uploaded_file = st.file_uploader(
-        "Choose file with actual data",
+        "Datei mit Ist-Daten auswählen",
         type=["csv", "xlsx", "xls"],
         key="actuals_upload",
-        help="File should have a 'timestamp' column and columns matching your forecast targets"
+        help="Datei sollte eine 'timestamp'-Spalte und Spalten haben, die Ihren Prognosezielen entsprechen"
     )
     
     if uploaded_file is not None:
@@ -3066,22 +3067,22 @@ def _render_actuals_upload_section():
                 if ts_col != 'timestamp':
                     actuals_df = actuals_df.drop(columns=[ts_col])
             else:
-                st.error("❌ Could not find a timestamp column. Please ensure your file has a 'timestamp' or 'date' column.")
+                st.error("❌ Keine Zeitstempel-Spalte gefunden. Bitte stellen Sie sicher, dass Ihre Datei eine 'timestamp'- oder 'date'-Spalte hat.")
                 return
             
             # Show preview
-            st.markdown("#### Data Preview")
+            st.markdown("#### Datenvorschau")
             numeric_cols = actuals_df.select_dtypes(include=[np.number]).columns
             st.dataframe(
                 actuals_df.head(10).style.format("{:.1f}", subset=numeric_cols),
                 use_container_width=True
             )
             
-            st.caption(f"Loaded {len(actuals_df)} rows from {actuals_df['timestamp'].min()} to {actuals_df['timestamp'].max()}")
+            st.caption(f"{len(actuals_df)} Zeilen geladen von {actuals_df['timestamp'].min().strftime('%d.%m.%Y %H:%M')} bis {actuals_df['timestamp'].max().strftime('%d.%m.%Y %H:%M')}")
             
             # Compare button
-            if st.button("🔍 Compare to Forecast", type="primary", use_container_width=True):
-                with st.spinner("Analyzing forecast accuracy..."):
+            if st.button("🔍 Mit Prognose vergleichen", type="primary", use_container_width=True):
+                with st.spinner("Analysiere Prognose-Genauigkeit..."):
                     forecast_df = st.session_state.forecast_df
                     
                     # Run comparison
@@ -3095,24 +3096,24 @@ def _render_actuals_upload_section():
                     st.session_state.last_comparison = comparison
                     st.session_state.actuals_df = actuals_df
                     
-                    st.success("✅ Comparison complete! Go to 'View Comparison' tab to see results.")
+                    st.success("✅ Vergleich abgeschlossen! Gehen Sie zum Tab 'Vergleich ansehen', um die Ergebnisse zu sehen.")
                     st.rerun()
                     
         except Exception as e:
-            st.error(f"Error loading file: {str(e)}")
+            st.error(f"Fehler beim Laden der Datei: {str(e)}")
             import traceback
             st.code(traceback.format_exc())
     
     # Sample format download
-    with st.expander("📋 Expected File Format", expanded=False):
+    with st.expander("📋 Erwartetes Dateiformat", expanded=False):
         st.markdown("""
-        Your file should have these columns:
-        - **timestamp**: Date and time (e.g., '2026-01-15 09:00:00')
-        - **call_volume**: Number of calls
-        - **email_count**: Number of emails
-        - **outbound_ook/omk/nb**: Outbound call volumes (optional)
+        Ihre Datei sollte diese Spalten haben:
+        - **timestamp**: Datum und Uhrzeit (z.B. '2026-01-15 09:00:00')
+        - **call_volume**: Anzahl der Anrufe
+        - **email_count**: Anzahl der E-Mails
+        - **outbound_ook/omk/nb**: Outbound-Anrufvolumen (optional)
         
-        The column names should match your forecast output.
+        Die Spaltennamen sollten mit Ihrer Prognose-Ausgabe übereinstimmen.
         """)
         
         # Create sample data
@@ -3125,43 +3126,43 @@ def _render_actuals_upload_section():
         
         csv_sample = sample_df.to_csv(index=False)
         st.download_button(
-            "📥 Download Sample Template",
+            "📥 Beispielvorlage herunterladen",
             data=csv_sample,
-            file_name="actuals_template.csv",
+            file_name="ist_daten_vorlage.csv",
             mime="text/csv"
         )
 
 
 def _render_comparison_section():
     """Render the forecast vs actuals comparison."""
-    st.markdown("### Forecast vs Actual Comparison")
+    st.markdown("### Prognose vs. Ist-Vergleich")
     
     comparison = st.session_state.get("last_comparison")
     
     if comparison is None:
-        st.info("📤 Upload actual data in the 'Upload Actuals' tab to see a comparison.")
+        st.info("📤 Laden Sie Ist-Daten im Tab 'Ist-Daten hochladen' hoch, um einen Vergleich zu sehen.")
         return
     
     # Overall accuracy card
     _render_accuracy_card(comparison)
     
     # Summary
-    st.markdown("### 📝 Summary")
+    st.markdown("### 📝 Zusammenfassung")
     st.markdown(f"**{comparison.summary}**")
     
     # Highlights and improvements in two columns
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("#### ✅ What Went Well")
+        st.markdown("#### ✅ Was gut lief")
         if comparison.highlights:
             for highlight in comparison.highlights:
                 st.markdown(f"- {highlight}")
         else:
-            st.markdown("- No specific highlights")
+            st.markdown("- Keine besonderen Highlights")
     
     with col2:
-        st.markdown("#### 🎯 Areas for Improvement")
+        st.markdown("#### 🎯 Verbesserungspotenzial")
         if comparison.areas_for_improvement:
             for improvement in comparison.areas_for_improvement:
                 st.markdown(f"- {improvement}")
@@ -3195,36 +3196,36 @@ def _render_comparison_section():
                     <div style="font-size: 2rem; font-weight: 700; color: {color};">
                         {accuracy:.0f}%
                     </div>
-                    <div style="font-size: 0.8rem; color: #6b7280;">Accuracy</div>
+                    <div style="font-size: 0.8rem; color: #6b7280;">Genauigkeit</div>
                     <hr style="margin: 0.5rem 0; border-color: #e5e7eb;">
                     <div style="font-size: 0.85rem; color: #6b7280;">
-                        Predicted: {metrics.get('total_predicted', 0):,.0f}<br>
-                        Actual: {metrics.get('total_actual', 0):,.0f}
+                        Prognose: {metrics.get('total_predicted', 0):,.0f}<br>
+                        Ist: {metrics.get('total_actual', 0):,.0f}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
     
     # Visual comparison chart
-    st.markdown("### 📈 Visual Comparison")
+    st.markdown("### 📈 Visueller Vergleich")
     _render_comparison_chart(comparison)
     
     # Learning feedback
     st.markdown("---")
-    st.markdown("### 🧠 Help the Model Learn")
-    st.markdown("Your feedback helps improve future forecasts.")
+    st.markdown("### 🧠 Helfen Sie dem Modell zu lernen")
+    st.markdown("Ihr Feedback hilft, zukünftige Prognosen zu verbessern.")
     
     col_fb1, col_fb2 = st.columns([2, 1])
     
     with col_fb1:
         feedback_note = st.text_area(
-            "Add notes about this period (optional)",
-            placeholder="e.g., 'Marketing campaign ran on Tuesday', 'Unexpected system outage on Friday'",
-            help="These notes help explain why forecasts may have been off"
+            "Notizen zu diesem Zeitraum hinzufügen (optional)",
+            placeholder="z.B. 'Marketing-Kampagne lief am Dienstag', 'Unerwarteter Systemausfall am Freitag'",
+            help="Diese Notizen helfen zu erklären, warum Prognosen möglicherweise abweichen"
         )
     
     with col_fb2:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("💾 Save Feedback", type="primary", use_container_width=True):
+        if st.button("💾 Feedback speichern", type="primary", use_container_width=True):
             # Save to forecast history
             history_entry = {
                 "forecast_id": comparison.forecast_id,
@@ -3240,7 +3241,7 @@ def _render_comparison_section():
                 st.session_state.forecast_history = []
             
             st.session_state.forecast_history.append(history_entry)
-            st.success("✅ Feedback saved! This will help improve future forecasts.")
+            st.success("✅ Feedback gespeichert! Dies wird helfen, zukünftige Prognosen zu verbessern.")
 
 
 def _render_accuracy_card(comparison: ForecastComparison):
@@ -3251,15 +3252,15 @@ def _render_accuracy_card(comparison: ForecastComparison):
     if accuracy >= 80:
         color = "#10b981"
         emoji = "🟢"
-        label = "Excellent"
+        label = "Ausgezeichnet"
     elif accuracy >= 60:
         color = "#f59e0b"
         emoji = "🟡"
-        label = "Good"
+        label = "Gut"
     else:
         color = "#ef4444"
         emoji = "🔴"
-        label = "Needs Improvement"
+        label = "Verbesserung nötig"
     
     st.markdown(f"""
     <div style="
@@ -3272,13 +3273,13 @@ def _render_accuracy_card(comparison: ForecastComparison):
     ">
         <div style="font-size: 3rem; margin-bottom: 0.5rem;">{emoji}</div>
         <div style="font-size: 2.5rem; font-weight: 700; color: {color};">
-            {accuracy:.0f}% Accurate
+            {accuracy:.0f}% Genau
         </div>
         <div style="font-size: 1.1rem; color: #374151; margin-top: 0.5rem;">
-            {label} - Average error of {comparison.overall_mape:.1f}%
+            {label} – Durchschnittlicher Fehler von {comparison.overall_mape:.1f}%
         </div>
         <div style="font-size: 0.9rem; color: #6b7280; margin-top: 0.5rem;">
-            Period: {comparison.period_start.strftime('%Y-%m-%d')} to {comparison.period_end.strftime('%Y-%m-%d')}
+            Zeitraum: {comparison.period_start.strftime('%d.%m.%Y')} bis {comparison.period_end.strftime('%d.%m.%Y')}
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -3287,7 +3288,7 @@ def _render_accuracy_card(comparison: ForecastComparison):
 def _render_comparison_chart(comparison: ForecastComparison):
     """Render forecast vs actuals comparison chart."""
     if comparison.comparison_df is None or comparison.comparison_df.empty:
-        st.warning("No comparison data available to visualize.")
+        st.warning("Keine Vergleichsdaten zur Visualisierung verfügbar.")
         return
     
     df = comparison.comparison_df
@@ -3296,7 +3297,7 @@ def _render_comparison_chart(comparison: ForecastComparison):
     pred_cols = [c for c in df.columns if c.endswith('_pred')]
     
     if not pred_cols:
-        st.warning("Could not identify prediction columns for visualization.")
+        st.warning("Prognose-Spalten für Visualisierung konnten nicht identifiziert werden.")
         return
     
     # Create chart for first target

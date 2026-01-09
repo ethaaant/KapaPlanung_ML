@@ -110,11 +110,11 @@ def get_traffic_light_status(confidence_score: float) -> Tuple[QualityLevel, str
         Tuple of (level, color, emoji, label)
     """
     if confidence_score >= 80:
-        return QualityLevel.HIGH, "#10b981", "🟢", "Highly Reliable"
+        return QualityLevel.HIGH, "#10b981", "🟢", "Sehr zuverlässig"
     elif confidence_score >= 60:
-        return QualityLevel.MEDIUM, "#f59e0b", "🟡", "Moderately Reliable"
+        return QualityLevel.MEDIUM, "#f59e0b", "🟡", "Mäßig zuverlässig"
     else:
-        return QualityLevel.LOW, "#ef4444", "🔴", "Use with Caution"
+        return QualityLevel.LOW, "#ef4444", "🔴", "Mit Vorsicht verwenden"
 
 
 def generate_plain_explanation(
@@ -124,7 +124,7 @@ def generate_plain_explanation(
     forecast_horizon_days: int = 7
 ) -> Tuple[str, List[str]]:
     """
-    Generate plain-language explanation for the forecast quality.
+    Generate plain-language explanation for the forecast quality (German).
     
     Returns:
         Tuple of (main_explanation, detail_points)
@@ -133,31 +133,31 @@ def generate_plain_explanation(
     
     # Main explanation based on level
     if level == QualityLevel.HIGH:
-        main = "This forecast is based on strong, consistent patterns in your historical data."
-        details.append("The model accurately captured your weekly and daily patterns")
-        details.append("Historical predictions closely matched actual results")
+        main = "Diese Prognose basiert auf starken, konsistenten Mustern in Ihren historischen Daten."
+        details.append("Das Modell hat Ihre wöchentlichen und täglichen Muster präzise erfasst")
+        details.append("Historische Vorhersagen stimmten sehr gut mit den tatsächlichen Werten überein")
     elif level == QualityLevel.MEDIUM:
-        main = "This forecast shows reasonable accuracy but has some uncertainty."
-        details.append("Consider having 10-15% buffer capacity for unexpected spikes")
-        details.append("The model detected patterns but with some variability")
+        main = "Diese Prognose zeigt akzeptable Genauigkeit, hat aber gewisse Unsicherheit."
+        details.append("Empfehlung: 10-15% Pufferkapazität für unerwartete Spitzen einplanen")
+        details.append("Das Modell hat Muster erkannt, jedoch mit gewisser Variabilität")
     else:
-        main = "This forecast should be used as a rough guide only."
-        details.append("Limited historical data or unusual patterns detected")
-        details.append("Recommend manual review and adjustment of staffing levels")
+        main = "Diese Prognose sollte nur als grobe Orientierung verwendet werden."
+        details.append("Begrenzte historische Daten oder ungewöhnliche Muster erkannt")
+        details.append("Empfehlung: Manuelle Überprüfung und Anpassung der Personalplanung")
     
     # Add horizon-specific note
     if forecast_horizon_days > 14:
-        details.append(f"Forecasting {forecast_horizon_days} days ahead increases uncertainty")
+        details.append(f"Prognose über {forecast_horizon_days} Tage erhöht die Unsicherheit")
     
     # Add metric-specific insights
     if training_metrics:
         avg_mape = np.mean([m.get('mape', 0) for m in training_metrics.values()])
         if avg_mape < 10:
-            details.append("Predictions are typically within 10% of actual values")
+            details.append("Vorhersagen liegen typischerweise innerhalb von 10% der tatsächlichen Werte")
         elif avg_mape < 20:
-            details.append("Predictions are typically within 20% of actual values")
+            details.append("Vorhersagen liegen typischerweise innerhalb von 20% der tatsächlichen Werte")
         else:
-            details.append(f"Predictions may vary by up to {avg_mape:.0f}% from actual values")
+            details.append(f"Vorhersagen können um bis zu {avg_mape:.0f}% von den tatsächlichen Werten abweichen")
     
     return main, details
 
@@ -246,9 +246,9 @@ def compare_forecast_to_actuals(
             overall_accuracy=0,
             overall_mape=100,
             target_metrics={},
-            summary="Could not compare: No matching timestamps between forecast and actuals.",
+            summary="Vergleich nicht möglich: Keine übereinstimmenden Zeitstempel zwischen Prognose und Ist-Daten.",
             highlights=[],
-            areas_for_improvement=["Ensure actual data covers the same time period as forecast"],
+            areas_for_improvement=["Stellen Sie sicher, dass die Ist-Daten den gleichen Zeitraum wie die Prognose abdecken"],
             comparison_df=None
         )
     
@@ -340,45 +340,60 @@ def _generate_comparison_summary(
     mape: float,
     target_metrics: Dict[str, Dict[str, float]]
 ) -> Tuple[str, List[str], List[str]]:
-    """Generate plain-language summary of forecast vs actuals comparison."""
+    """Generate plain-language summary of forecast vs actuals comparison (German)."""
     
     highlights = []
     improvements = []
     
     # Main summary
     if accuracy >= 90:
-        summary = "Excellent! The forecast was highly accurate."
+        summary = "Ausgezeichnet! Die Prognose war sehr genau."
     elif accuracy >= 80:
-        summary = "Good performance. The forecast closely matched actual results."
+        summary = "Gute Leistung. Die Prognose stimmte weitgehend mit den tatsächlichen Werten überein."
     elif accuracy >= 70:
-        summary = "Reasonable accuracy. Some variance between forecast and actuals."
+        summary = "Akzeptable Genauigkeit. Es gab einige Abweichungen zwischen Prognose und Ist-Werten."
     elif accuracy >= 60:
-        summary = "Moderate accuracy. Consider adjusting future forecasts."
+        summary = "Mäßige Genauigkeit. Zukünftige Prognosen sollten angepasst werden."
     else:
-        summary = "Significant variance detected. Review the comparison details below."
+        summary = "Erhebliche Abweichungen festgestellt. Bitte die Details unten prüfen."
     
     # Per-target highlights
     for target, metrics in target_metrics.items():
-        target_name = target.replace('_', ' ').title()
+        target_name = _translate_target_name(target)
         target_acc = metrics.get('accuracy', 0)
         
         if target_acc >= 90:
-            highlights.append(f"✓ {target_name}: {target_acc:.0f}% accurate")
+            highlights.append(f"✓ {target_name}: {target_acc:.0f}% genau")
         elif target_acc < 70:
             diff = metrics['total_actual'] - metrics['total_predicted']
             if diff > 0:
-                improvements.append(f"{target_name}: Under-predicted by {abs(diff):.0f} total")
+                improvements.append(f"{target_name}: Um {abs(diff):.0f} zu niedrig prognostiziert")
             else:
-                improvements.append(f"{target_name}: Over-predicted by {abs(diff):.0f} total")
+                improvements.append(f"{target_name}: Um {abs(diff):.0f} zu hoch prognostiziert")
     
     # Add general insights
     if accuracy >= 80:
-        highlights.append("The model correctly identified busy/quiet patterns")
+        highlights.append("Das Modell hat Stoß- und Ruhezeiten korrekt erkannt")
     
     if not improvements:
-        improvements.append("No major issues detected - continue with current approach")
+        improvements.append("Keine größeren Probleme erkannt – Ansatz beibehalten")
     
     return summary, highlights, improvements
+
+
+def _translate_target_name(target: str) -> str:
+    """Translate target column names to German display names."""
+    translations = {
+        "call_volume": "Anrufvolumen",
+        "email_count": "E-Mail-Volumen",
+        "outbound_ook": "Outbound OOK",
+        "outbound_omk": "Outbound OMK",
+        "outbound_nb": "Outbound NB",
+        "calls": "Anrufe",
+        "emails": "E-Mails",
+        "outbound": "Outbound"
+    }
+    return translations.get(target, target.replace('_', ' ').title())
 
 
 def calculate_peak_detection_accuracy(

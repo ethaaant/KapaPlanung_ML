@@ -1,8 +1,8 @@
 {
   "model_id": "workload_forecaster",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "model_type": "Prophet",
-  "created_at": "2026-01-08T15:05:42.791213",
+  "created_at": "2026-01-08T15:49:55.247902",
   "created_by": "admin",
   "training_data_hash": "0bcb0a858201",
   "training_samples": 4320,

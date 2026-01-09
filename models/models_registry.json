@@ -124,6 +124,70 @@
         }
       },
       "config": {},
+      "is_active": false,
+      "description": "",
+      "notes": ""
+    },
+    {
+      "model_id": "workload_forecaster",
+      "version": "1.0.2",
+      "model_type": "Prophet",
+      "created_at": "2026-01-08T15:49:55.247902",
+      "created_by": "admin",
+      "training_data_hash": "0bcb0a858201",
+      "training_samples": 4320,
+      "training_date_range": [
+        "2025-07-12T00:00:00",
+        "2026-01-07T23:00:00"
+      ],
+      "features_used": [],
+      "target_columns": [
+        "call_volume",
+        "email_count",
+        "outbound_nb",
+        "outbound_omk",
+        "outbound_ook",
+        "outbound_total"
+      ],
+      "metrics": {
+        "call_volume": {
+          "rmse": 9.47971780475251,
+          "mae": 7.788840000160734,
+          "mape": 173.38441841982655,
+          "r2": 0.7825339838742378
+        },
+        "email_count": {
+          "rmse": 6.642138215114561,
+          "mae": 4.989675501944048,
+          "mape": 120.25169368267046,
+          "r2": 0.6993992907999362
+        },
+        "outbound_nb": {
+          "rmse": 3.0004529878941764,
+          "mae": 1.9632485836906928,
+          "mape": 48.54133465151129,
+          "r2": 0.8689264731371728
+        },
+        "outbound_omk": {
+          "rmse": 1.5846836533981854,
+          "mae": 1.0586850914596089,
+          "mape": 45.6559407063712,
+          "r2": 0.843658537289145
+        },
+        "outbound_ook": {
+          "rmse": 2.332396715781796,
+          "mae": 1.5560586493581432,
+          "mape": 49.91658462325967,
+          "r2": 0.8657634889551955
+        },
+        "outbound_total": {
+          "rmse": 4.813237460574153,
+          "mae": 3.5782233515976225,
+          "mape": 53.58263829412557,
+          "r2": 0.9280004269130022
+        }
+      },
+      "config": {},
       "is_active": true,
       "description": "",
       "notes": ""
