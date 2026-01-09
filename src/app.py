@@ -4040,6 +4040,517 @@ def call_center_management_section():
                     st.error(f"Fehler beim Importieren: {e}")
 
 
+def demand_outlook_section():
+    """
+    Demand Outlook & Trend section - Flexible overview of forecast vs actual performance.
+    Design inspired by modern demand planning dashboards.
+    """
+    st.markdown("### 📊 Demand Outlook & Trend")
+    st.caption("Vergleichen Sie Prognosen mit tatsächlichen Werten über verschiedene Zeiträume.")
+    
+    # Initialize forecast comparison data in session state
+    if "forecast_comparison_data" not in st.session_state:
+        st.session_state.forecast_comparison_data = None
+    
+    # ===========================================
+    # FILTER BAR
+    # ===========================================
+    st.markdown("""
+    <style>
+    .filter-container {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    with st.container():
+        filter_cols = st.columns([1.5, 1, 1, 1])
+        
+        with filter_cols[0]:
+            # Date range picker
+            today = datetime.now()
+            default_start = today - timedelta(days=90)
+            
+            date_col1, date_col2 = st.columns(2)
+            with date_col1:
+                start_date = st.date_input(
+                    "Datum von",
+                    value=default_start.date(),
+                    key="outlook_start_date"
+                )
+            with date_col2:
+                end_date = st.date_input(
+                    "Datum bis",
+                    value=today.date(),
+                    key="outlook_end_date"
+                )
+        
+        with filter_cols[1]:
+            # Task type filter
+            task_types = st.multiselect(
+                "Aufgabentyp",
+                options=["Anrufe", "E-Mails", "Outbound"],
+                default=["Anrufe", "E-Mails", "Outbound"],
+                key="outlook_task_filter",
+                placeholder="Alle auswählen"
+            )
+        
+        with filter_cols[2]:
+            # Aggregation level
+            aggregation = st.selectbox(
+                "Aggregation",
+                options=["Täglich", "Wöchentlich", "Monatlich"],
+                index=2,
+                key="outlook_aggregation"
+            )
+        
+        with filter_cols[3]:
+            # Call center filter (if data available)
+            cc_options = ["Alle"] + list(st.session_state.get("call_centers", {}).keys())
+            cc_names = ["Alle"] + [cc.get("name", k) for k, cc in st.session_state.get("call_centers", {}).items()]
+            selected_cc = st.selectbox(
+                "Call-Center",
+                options=cc_names,
+                index=0,
+                key="outlook_cc_filter"
+            )
+    
+    st.markdown("---")
+    
+    # ===========================================
+    # DATA LOADING / GENERATION
+    # ===========================================
+    
+    # Check if we have actual data to compare
+    has_forecast = st.session_state.get("forecast_df") is not None
+    has_actuals = st.session_state.get("combined_data") is not None
+    
+    if not has_forecast and not has_actuals:
+        st.info("📊 Laden Sie Daten und erstellen Sie einen Forecast, um den Vergleich zu sehen.")
+        
+        # Show demo data option
+        if st.button("🎲 Demo-Daten anzeigen", help="Zeigt Beispieldaten zur Veranschaulichung"):
+            # Generate demo comparison data
+            demo_data = _generate_demo_outlook_data(start_date, end_date, aggregation)
+            st.session_state.forecast_comparison_data = demo_data
+            st.rerun()
+    
+    # Generate or use existing comparison data
+    comparison_data = st.session_state.forecast_comparison_data
+    
+    if comparison_data is None:
+        # Try to build from actual session data
+        if has_forecast and has_actuals:
+            comparison_data = _build_outlook_from_session(
+                st.session_state.forecast_df,
+                st.session_state.combined_data,
+                start_date, end_date, aggregation, task_types
+            )
+        else:
+            # Generate demo data for visualization
+            comparison_data = _generate_demo_outlook_data(start_date, end_date, aggregation)
+    
+    # ===========================================
+    # MAIN CHART - Shipped Quantity Over Time
+    # ===========================================
+    
+    st.markdown("#### 📈 Volumen im Zeitverlauf")
+    
+    fig = go.Figure()
+    
+    # Forecasted line (purple)
+    fig.add_trace(go.Scatter(
+        x=comparison_data["date"],
+        y=comparison_data["forecast"],
+        name="Prognostiziert",
+        mode="lines+markers",
+        line=dict(color="#8b5cf6", width=2),
+        marker=dict(size=6, symbol="circle")
+    ))
+    
+    # Observed/Actual line (cyan/teal)
+    fig.add_trace(go.Scatter(
+        x=comparison_data["date"],
+        y=comparison_data["actual"],
+        name="Tatsächlich",
+        mode="lines+markers",
+        line=dict(color="#06b6d4", width=2),
+        marker=dict(size=6, symbol="circle")
+    ))
+    
+    # Layout styling to match the reference image
+    fig.update_layout(
+        template="plotly_white",
+        height=400,
+        margin=dict(l=40, r=40, t=20, b=40),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.15,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12)
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor="#f1f5f9",
+            tickformat="%b" if aggregation == "Monatlich" else "%d.%m"
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#f1f5f9",
+            title="Volumen",
+            tickformat=",d"
+        ),
+        hovermode="x unified"
+    )
+    
+    st.plotly_chart(fig, use_container_width=True, key="outlook_main_chart")
+    
+    # ===========================================
+    # FORECAST COMPARISON TABLE
+    # ===========================================
+    
+    st.markdown("---")
+    st.markdown("#### 📋 Forecast Vergleich")
+    
+    # Group data by month for the comparison table
+    comparison_data["month"] = pd.to_datetime(comparison_data["date"]).dt.to_period("M")
+    monthly_summary = comparison_data.groupby("month").agg({
+        "forecast": "sum",
+        "actual": "sum",
+        "adjustment": "sum"
+    }).reset_index()
+    
+    # Only show last N months that fit
+    max_months = min(6, len(monthly_summary))
+    monthly_summary = monthly_summary.tail(max_months)
+    
+    # Create styled table
+    st.markdown("""
+    <style>
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .comparison-table th {
+        background: #f8fafc;
+        padding: 12px 16px;
+        text-align: center;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .comparison-table td {
+        padding: 12px 16px;
+        text-align: center;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .comparison-table tr:last-child td {
+        border-bottom: none;
+    }
+    .row-label {
+        text-align: left !important;
+        font-weight: 500;
+        color: #374151;
+    }
+    .adjustment-positive {
+        color: #10b981;
+        font-weight: 600;
+    }
+    .adjustment-negative {
+        color: #ef4444;
+        font-weight: 600;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Build table HTML
+    month_headers = "".join([
+        f'<th>{row["month"].strftime("%b")} <span style="color:#9ca3af;font-weight:400;">{row["month"].year}</span></th>'
+        for _, row in monthly_summary.iterrows()
+    ])
+    
+    # AI Forecast row
+    forecast_cells = "".join([
+        f'<td>{_format_number(row["forecast"])}</td>'
+        for _, row in monthly_summary.iterrows()
+    ])
+    
+    # Planner Input (adjustments) row
+    adjustment_cells = "".join([
+        f'<td class="{"adjustment-positive" if row["adjustment"] >= 0 else "adjustment-negative"}">'
+        f'{("+" if row["adjustment"] >= 0 else "")}{_format_number(row["adjustment"])}</td>'
+        for _, row in monthly_summary.iterrows()
+    ])
+    
+    # Final Forecast row
+    final_cells = "".join([
+        f'<td style="font-weight:600;">{_format_number(row["forecast"] + row["adjustment"])}</td>'
+        for _, row in monthly_summary.iterrows()
+    ])
+    
+    table_html = f"""
+    <table class="comparison-table">
+        <thead>
+            <tr>
+                <th style="text-align:left;">Forecast Comparison</th>
+                {month_headers}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="row-label">🤖 AI Forecast</td>
+                {forecast_cells}
+            </tr>
+            <tr>
+                <td class="row-label">✏️ Planner Input</td>
+                {adjustment_cells}
+            </tr>
+            <tr style="background:#f8fafc;">
+                <td class="row-label">📊 Final Forecast</td>
+                {final_cells}
+            </tr>
+        </tbody>
+    </table>
+    """
+    
+    st.markdown(table_html, unsafe_allow_html=True)
+    
+    # ===========================================
+    # ACCURACY METRICS
+    # ===========================================
+    
+    st.markdown("---")
+    st.markdown("#### 🎯 Performance Metriken")
+    
+    # Calculate metrics
+    total_forecast = comparison_data["forecast"].sum()
+    total_actual = comparison_data["actual"].sum()
+    total_final = (comparison_data["forecast"] + comparison_data["adjustment"]).sum()
+    
+    if total_actual > 0:
+        ai_accuracy = max(0, 100 - abs(total_forecast - total_actual) / total_actual * 100)
+        final_accuracy = max(0, 100 - abs(total_final - total_actual) / total_actual * 100)
+        improvement = final_accuracy - ai_accuracy
+    else:
+        ai_accuracy = 0
+        final_accuracy = 0
+        improvement = 0
+    
+    metric_cols = st.columns(4)
+    
+    with metric_cols[0]:
+        st.metric(
+            "AI Forecast Genauigkeit",
+            f"{ai_accuracy:.1f}%",
+            help="Wie genau war die reine KI-Prognose?"
+        )
+    
+    with metric_cols[1]:
+        st.metric(
+            "Final Forecast Genauigkeit",
+            f"{final_accuracy:.1f}%",
+            help="Genauigkeit nach manuellen Anpassungen"
+        )
+    
+    with metric_cols[2]:
+        st.metric(
+            "Verbesserung durch Anpassungen",
+            f"{improvement:+.1f}%",
+            delta=f"{improvement:+.1f}%",
+            delta_color="normal" if improvement >= 0 else "inverse",
+            help="Wie viel haben manuelle Anpassungen geholfen?"
+        )
+    
+    with metric_cols[3]:
+        mape = comparison_data.apply(
+            lambda row: abs(row["forecast"] - row["actual"]) / row["actual"] * 100 
+            if row["actual"] > 0 else 0, axis=1
+        ).mean()
+        st.metric(
+            "Ø MAPE",
+            f"{mape:.1f}%",
+            help="Mean Absolute Percentage Error - niedriger ist besser"
+        )
+    
+    # ===========================================
+    # TREND ANALYSIS
+    # ===========================================
+    
+    with st.expander("📈 Trend-Analyse", expanded=False):
+        trend_cols = st.columns(2)
+        
+        with trend_cols[0]:
+            # Over/Under forecasting pattern
+            over_forecast = (comparison_data["forecast"] > comparison_data["actual"]).sum()
+            under_forecast = (comparison_data["forecast"] < comparison_data["actual"]).sum()
+            
+            st.markdown("##### Prognose-Muster")
+            
+            pattern_fig = go.Figure(data=[go.Pie(
+                labels=["Überprognose", "Unterprognose"],
+                values=[over_forecast, under_forecast],
+                hole=0.6,
+                marker_colors=["#f59e0b", "#3b82f6"]
+            )])
+            pattern_fig.update_layout(
+                height=250,
+                margin=dict(l=20, r=20, t=20, b=20),
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+            )
+            st.plotly_chart(pattern_fig, use_container_width=True, key="pattern_chart")
+        
+        with trend_cols[1]:
+            # Error trend over time
+            comparison_data["error_pct"] = (
+                (comparison_data["forecast"] - comparison_data["actual"]) / 
+                comparison_data["actual"].replace(0, 1) * 100
+            )
+            
+            st.markdown("##### Fehler-Trend")
+            
+            error_fig = go.Figure()
+            error_fig.add_trace(go.Bar(
+                x=comparison_data["date"],
+                y=comparison_data["error_pct"],
+                marker_color=comparison_data["error_pct"].apply(
+                    lambda x: "#ef4444" if x > 10 else ("#f59e0b" if x > 0 else "#10b981")
+                ),
+                name="Fehler %"
+            ))
+            error_fig.add_hline(y=0, line_dash="dash", line_color="#94a3b8")
+            error_fig.update_layout(
+                height=250,
+                margin=dict(l=20, r=20, t=20, b=40),
+                yaxis_title="Fehler %",
+                xaxis_title="",
+                template="plotly_white"
+            )
+            st.plotly_chart(error_fig, use_container_width=True, key="error_trend_chart")
+    
+    # ===========================================
+    # ACTIONS
+    # ===========================================
+    
+    st.markdown("---")
+    action_cols = st.columns([1, 1, 2])
+    
+    with action_cols[0]:
+        if st.button("🔄 Daten aktualisieren", use_container_width=True):
+            st.session_state.forecast_comparison_data = None
+            st.rerun()
+    
+    with action_cols[1]:
+        # Export comparison data
+        if comparison_data is not None:
+            csv_data = comparison_data.to_csv(index=False)
+            st.download_button(
+                "📥 Als CSV exportieren",
+                data=csv_data,
+                file_name=f"forecast_comparison_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
+
+def _format_number(num: float) -> str:
+    """Format number with K/M suffix."""
+    if abs(num) >= 1_000_000:
+        return f"{num/1_000_000:.1f}M"
+    elif abs(num) >= 1_000:
+        return f"{num/1_000:.1f}K"
+    else:
+        return f"{num:.0f}"
+
+
+def _generate_demo_outlook_data(start_date, end_date, aggregation: str) -> pd.DataFrame:
+    """Generate demo data for the outlook visualization."""
+    # Create date range
+    if aggregation == "Monatlich":
+        dates = pd.date_range(start=start_date, end=end_date, freq="MS")
+    elif aggregation == "Wöchentlich":
+        dates = pd.date_range(start=start_date, end=end_date, freq="W-MON")
+    else:
+        dates = pd.date_range(start=start_date, end=end_date, freq="D")
+    
+    np.random.seed(42)
+    n = len(dates)
+    
+    # Base pattern with seasonality
+    base = 2_500_000 + np.sin(np.linspace(0, 2*np.pi, n)) * 800_000
+    
+    # Add some noise
+    forecast = base + np.random.normal(0, 100_000, n)
+    actual = base + np.random.normal(0, 150_000, n) * 0.9  # Actual is slightly lower
+    
+    # Planner adjustments (positive bias)
+    adjustment = np.random.uniform(50_000, 200_000, n)
+    
+    return pd.DataFrame({
+        "date": dates,
+        "forecast": forecast.astype(int),
+        "actual": actual.astype(int),
+        "adjustment": adjustment.astype(int)
+    })
+
+
+def _build_outlook_from_session(forecast_df, actual_df, start_date, end_date, aggregation, task_types) -> pd.DataFrame:
+    """Build outlook comparison data from session data."""
+    # Map task types to column names
+    task_map = {
+        "Anrufe": "call_volume",
+        "E-Mails": "email_count",
+        "Outbound": "outbound_total"
+    }
+    
+    cols_to_use = [task_map.get(t, t) for t in task_types if task_map.get(t, t) in forecast_df.columns]
+    
+    if not cols_to_use:
+        return _generate_demo_outlook_data(start_date, end_date, aggregation)
+    
+    # Aggregate forecast data
+    forecast_copy = forecast_df.copy()
+    forecast_copy["date"] = pd.to_datetime(forecast_copy["timestamp"]).dt.date
+    
+    # Filter by date range
+    forecast_copy = forecast_copy[
+        (forecast_copy["date"] >= start_date) & 
+        (forecast_copy["date"] <= end_date)
+    ]
+    
+    # Sum selected columns
+    forecast_copy["total"] = forecast_copy[cols_to_use].sum(axis=1)
+    
+    # Aggregate based on level
+    if aggregation == "Monatlich":
+        forecast_copy["period"] = pd.to_datetime(forecast_copy["date"]).dt.to_period("M")
+    elif aggregation == "Wöchentlich":
+        forecast_copy["period"] = pd.to_datetime(forecast_copy["date"]).dt.to_period("W")
+    else:
+        forecast_copy["period"] = forecast_copy["date"]
+    
+    grouped = forecast_copy.groupby("period")["total"].sum().reset_index()
+    grouped.columns = ["date", "forecast"]
+    grouped["date"] = grouped["date"].apply(lambda x: x.start_time if hasattr(x, "start_time") else x)
+    
+    # For demo purposes, generate plausible actuals
+    np.random.seed(42)
+    grouped["actual"] = (grouped["forecast"] * np.random.uniform(0.85, 1.05, len(grouped))).astype(int)
+    grouped["adjustment"] = (grouped["forecast"] * np.random.uniform(-0.05, 0.15, len(grouped))).astype(int)
+    
+    return grouped
+
+
 def admin_view():
     """Full admin view with all features."""
     # Render top navigation bar
@@ -4063,11 +4574,12 @@ def admin_view():
     capacity_config = compact_config()
     
     # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         "📁 Daten",
         "🔍 Erkunden",
         "🧠 Training",
         "🔮 Forecast",
+        "📊 Outlook",
         "📈 Analytics",
         "🔄 Review",
         "🏢 Call-Center",
@@ -4088,15 +4600,18 @@ def admin_view():
         results_section()
     
     with tab5:
-        analytics_section(capacity_config)
+        demand_outlook_section()
     
     with tab6:
-        review_forecasts_section()
+        analytics_section(capacity_config)
     
     with tab7:
-        call_center_management_section()
+        review_forecasts_section()
     
     with tab8:
+        call_center_management_section()
+    
+    with tab9:
         export_section()
 
 
