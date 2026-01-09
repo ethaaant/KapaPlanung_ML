@@ -47,6 +47,11 @@ from src.auth import (
     logout
 )
 
+# Business hours configuration
+BUSINESS_HOURS_START = 7   # 07:00
+BUSINESS_HOURS_END = 22    # 22:00 (inclusive, so 7-22 = 7,8,...,21,22)
+BUSINESS_HOURS = list(range(BUSINESS_HOURS_START, BUSINESS_HOURS_END + 1))  # [7, 8, ..., 22]
+
 # Page configuration
 st.set_page_config(
     page_title="Workforce Planning ML",
@@ -709,7 +714,7 @@ def compact_config():
         
         with col4:
             aht_calls = st.number_input(
-                "AHT Anrufe (Min)",
+                "AHT Inbound",
                 value=5.0,
                 min_value=1.0,
                 max_value=30.0,
@@ -719,7 +724,7 @@ def compact_config():
         
         with col5:
             aht_emails = st.number_input(
-                "AHT E-Mails (Min)",
+                "Bearbeitungszeit E-Mails",
                 value=8.0,
                 min_value=1.0,
                 max_value=30.0,
@@ -729,7 +734,7 @@ def compact_config():
         
         with col6:
             aht_outbound = st.number_input(
-                "AHT Outbound (Min)",
+                "Bearbeitungszeit Outbound",
                 value=6.0,
                 min_value=1.0,
                 max_value=30.0,
@@ -1022,13 +1027,15 @@ def data_exploration_section():
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # Hourly patterns
-    st.markdown("### Hourly Patterns")
+    # Hourly patterns (business hours only: 7:00-22:00)
+    st.markdown("### Stündliche Muster (Geschäftszeiten)")
     
     data_with_hour = data.copy()
     data_with_hour["hour"] = data_with_hour["timestamp"].dt.hour
     
-    hourly_avg = data_with_hour.groupby("hour").mean(numeric_only=True).reset_index()
+    # Filter to business hours only
+    data_business_hours = data_with_hour[data_with_hour["hour"].isin(BUSINESS_HOURS)]
+    hourly_avg = data_business_hours.groupby("hour").mean(numeric_only=True).reset_index()
     
     fig2 = go.Figure()
     
@@ -1041,11 +1048,12 @@ def data_exploration_section():
             ))
     
     fig2.update_layout(
-        title="Average Volume by Hour of Day",
-        xaxis_title="Hour",
-        yaxis_title="Average Volume",
+        title="Ø Volumen nach Tageszeit (7:00-22:00)",
+        xaxis_title="Stunde",
+        yaxis_title="Ø Volumen",
         barmode="group",
-        template="plotly_white"
+        template="plotly_white",
+        xaxis=dict(tickmode='array', tickvals=BUSINESS_HOURS, ticktext=[f"{h}:00" for h in BUSINESS_HOURS])
     )
     
     st.plotly_chart(fig2, use_container_width=True)
@@ -1740,10 +1748,10 @@ def render_forecast_quality_card():
 def results_section():
     """Render forecast results and staffing plan."""
     if not st.session_state.forecast_generated:
-        st.info("👆 Please generate a forecast first")
+        st.info("👆 Erstelle zuerst einen Forecast")
         return
     
-    st.markdown("## 📊 Forecast Results")
+    st.markdown("## 📊 Forecast Ergebnisse")
     
     # Show forecast quality card
     render_forecast_quality_card()
@@ -1775,39 +1783,50 @@ def results_section():
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # Staffing plan visualization
-    st.markdown("### Staffing Requirements")
+    # Staffing plan visualization (business hours only)
+    st.markdown("### Personalbedarf (Geschäftszeiten 7:00-22:00)")
     
     if len(staffing_plan) > 0:
-        # Heatmap of agents needed
+        # Heatmap of agents needed - filter to business hours
         staffing_plan["hour"] = pd.to_datetime(staffing_plan["timestamp"]).dt.hour
         staffing_plan["date"] = pd.to_datetime(staffing_plan["timestamp"]).dt.date
         
-        pivot = staffing_plan.pivot_table(
+        # Filter to business hours only
+        staffing_business = staffing_plan[staffing_plan["hour"].isin(BUSINESS_HOURS)]
+        
+        pivot = staffing_business.pivot_table(
             index="date",
             columns="hour",
             values="total_agents",
             aggfunc="max"
         )
         
+        # Ensure all business hours columns exist (even if no data)
+        for h in BUSINESS_HOURS:
+            if h not in pivot.columns:
+                pivot[h] = 0
+        pivot = pivot[BUSINESS_HOURS]  # Reorder columns
+        
         fig2 = px.imshow(
             pivot,
-            labels=dict(x="Hour", y="Date", color="Agents"),
-            title="Required Agents Heatmap",
+            labels=dict(x="Stunde", y="Datum", color="Agenten"),
+            title="Personalbedarf Heatmap (7:00-22:00)",
             color_continuous_scale="Blues"
         )
+        fig2.update_xaxes(tickvals=list(range(len(BUSINESS_HOURS))), 
+                         ticktext=[f"{h}:00" for h in BUSINESS_HOURS])
         
         st.plotly_chart(fig2, use_container_width=True)
         
-        # Daily summary
-        st.markdown("### Daily Summary")
+        # Daily summary (business hours only)
+        st.markdown("### Tagesübersicht (Geschäftszeiten)")
         
-        daily_summary = staffing_plan.groupby("date").agg({
+        daily_summary = staffing_business.groupby("date").agg({
             "total_volume": "sum",
             "total_agents": ["max", "mean"]
         }).reset_index()
-        daily_summary.columns = ["Date", "Total Volume", "Peak Agents", "Avg Agents"]
-        daily_summary["Avg Agents"] = daily_summary["Avg Agents"].round(1)
+        daily_summary.columns = ["Datum", "Gesamtvolumen", "Max. Agenten", "Ø Agenten"]
+        daily_summary["Ø Agenten"] = daily_summary["Ø Agenten"].round(1)
         
         col1, col2 = st.columns(2)
         
@@ -1822,33 +1841,36 @@ def results_section():
         with col2:
             fig3 = go.Figure()
             fig3.add_trace(go.Bar(
-                x=daily_summary["Date"].astype(str),
-                y=daily_summary["Peak Agents"],
-                name="Peak Agents"
+                x=daily_summary["Datum"].astype(str),
+                y=daily_summary["Max. Agenten"],
+                name="Max. Agenten"
             ))
             fig3.add_trace(go.Scatter(
-                x=daily_summary["Date"].astype(str),
-                y=daily_summary["Avg Agents"],
-                name="Avg Agents",
+                x=daily_summary["Datum"].astype(str),
+                y=daily_summary["Ø Agenten"],
+                name="Ø Agenten",
                 mode="lines+markers"
             ))
             fig3.update_layout(
-                title="Daily Agent Requirements",
-                xaxis_title="Date",
-                yaxis_title="Agents"
+                title="Täglicher Agentenbedarf (Geschäftszeiten)",
+                xaxis_title="Datum",
+                yaxis_title="Agenten"
             )
             st.plotly_chart(fig3, use_container_width=True)
         
-        # Weekly Staffing Schedule Section
+        # Weekly Staffing Schedule Section (business hours only)
         st.markdown("---")
-        st.markdown("## 📅 Weekly Staffing Schedule")
-        st.markdown("Average required agents per hour, broken down by day of week")
+        st.markdown("## 📅 Wöchentlicher Dienstplan (7:00-22:00)")
+        st.markdown("Durchschnittlich benötigte Agenten pro Stunde, nach Wochentag")
         
-        # Prepare weekly data
+        # Prepare weekly data - filter to business hours
         staffing_copy = staffing_plan.copy()
         staffing_copy["day_of_week"] = pd.to_datetime(staffing_copy["timestamp"]).dt.dayofweek
         staffing_copy["day_name"] = pd.to_datetime(staffing_copy["timestamp"]).dt.day_name()
         staffing_copy["hour"] = pd.to_datetime(staffing_copy["timestamp"]).dt.hour
+        
+        # Filter to business hours only
+        staffing_copy = staffing_copy[staffing_copy["hour"].isin(BUSINESS_HOURS)]
         
         # Create weekly pivot table (average agents per day/hour)
         weekly_schedule = staffing_copy.pivot_table(
@@ -1858,8 +1880,14 @@ def results_section():
             aggfunc="mean"
         ).round(1)
         
+        # Ensure all business hours columns exist
+        for h in BUSINESS_HOURS:
+            if h not in weekly_schedule.columns:
+                weekly_schedule[h] = 0
+        weekly_schedule = weekly_schedule[BUSINESS_HOURS]  # Reorder to business hours only
+        
         # Sort by day of week and rename index
-        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        day_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
         weekly_schedule.index = [day_names[i] for i in weekly_schedule.index]
         
         # Weekly Heatmap
@@ -1871,38 +1899,38 @@ def results_section():
             text=weekly_schedule.values.round(0).astype(int),
             texttemplate="%{text}",
             textfont={"size": 12},
-            hovertemplate="Day: %{y}<br>Hour: %{x}<br>Agents: %{z:.1f}<extra></extra>"
+            hovertemplate="Tag: %{y}<br>Stunde: %{x}<br>Agenten: %{z:.1f}<extra></extra>"
         ))
         
         fig_weekly.update_layout(
-            title="Weekly Staffing Heatmap (Average Agents Required)",
-            xaxis_title="Hour of Day",
-            yaxis_title="Day of Week",
+            title="Wöchentliche Personalbedarfs-Heatmap (Ø Agenten)",
+            xaxis_title="Tageszeit",
+            yaxis_title="Wochentag",
             height=400,
-            yaxis=dict(autorange="reversed")  # Monday at top
+            yaxis=dict(autorange="reversed")  # Montag oben
         )
         
         st.plotly_chart(fig_weekly, use_container_width=True)
         
         # Weekly Schedule Table
-        st.markdown("### 📋 Weekly Schedule Table")
+        st.markdown("### 📋 Wöchentlicher Dienstplan-Tabelle")
         
         # Format the table nicely
         weekly_table = weekly_schedule.copy()
         weekly_table.columns = [f"{h}:00" for h in weekly_table.columns]
         
         # Add row totals (average agents per day)
-        weekly_table["Daily Avg"] = weekly_table.mean(axis=1).round(1)
-        weekly_table["Peak Hour"] = weekly_schedule.max(axis=1).round(0).astype(int)
+        weekly_table["Tages-Ø"] = weekly_table.mean(axis=1).round(1)
+        weekly_table["Spitze"] = weekly_schedule.max(axis=1).round(0).astype(int)
         
-        # Get hour columns (all except Daily Avg and Peak Hour)
-        hour_cols = [c for c in weekly_table.columns if c not in ["Daily Avg", "Peak Hour"]]
+        # Get hour columns (all except Tages-Ø and Spitze)
+        hour_cols = [c for c in weekly_table.columns if c not in ["Tages-Ø", "Spitze"]]
         
         st.dataframe(
             weekly_table.style
                 .background_gradient(cmap="Blues", subset=hour_cols)
                 .format("{:.0f}", subset=hour_cols)
-                .format("{:.1f}", subset=["Daily Avg"]),
+                .format("{:.1f}", subset=["Tages-Ø"]),
             use_container_width=True
         )
         
@@ -1941,11 +1969,11 @@ def results_section():
                 help="Stunde mit dem höchsten durchschnittlichen Personalbedarf"
             )
         
-        # Breakdown by task type if available
+        # Breakdown by task type if available (business hours only)
         agent_cols = [c for c in staffing_plan.columns if c.endswith("_agents") and c != "total_agents"]
         
         if agent_cols:
-            st.markdown("### 📊 Personal nach Aufgabentyp")
+            st.markdown("### 📊 Personal nach Aufgabentyp (7:00-22:00)")
             
             # Create tabs for each task type
             task_tabs = st.tabs([col.replace("_agents", "").replace("_", " ").title() for col in agent_cols])
@@ -1958,6 +1986,12 @@ def results_section():
                         values=col,
                         aggfunc="mean"
                     ).round(1)
+                    
+                    # Ensure all business hours columns exist
+                    for h in BUSINESS_HOURS:
+                        if h not in task_schedule.columns:
+                            task_schedule[h] = 0
+                    task_schedule = task_schedule[BUSINESS_HOURS]  # Reorder to business hours only
                     
                     task_schedule.index = [day_names[i] for i in task_schedule.index]
                     
@@ -1972,9 +2006,9 @@ def results_section():
                     ))
                     
                     fig_task.update_layout(
-                        title=f"{col.replace('_agents', '').replace('_', ' ').title()} - Agents Required",
-                        xaxis_title="Hour",
-                        yaxis_title="Day",
+                        title=f"{col.replace('_agents', '').replace('_', ' ').title()} - Benötigte Agenten",
+                        xaxis_title="Stunde",
+                        yaxis_title="Tag",
                         height=350,
                         yaxis=dict(autorange="reversed")
                     )
@@ -2828,13 +2862,21 @@ def dienstleister_view():
     forecast_start = st.session_state.get("forecast_start", staffing_plan["timestamp"].min())
     forecast_end = st.session_state.get("forecast_end", staffing_plan["timestamp"].max())
     
-    st.info(f"📅 **Forecast Period:** {forecast_start} to {forecast_end}")
+    if hasattr(forecast_start, 'strftime'):
+        st.info(f"📅 **Prognosezeitraum:** {forecast_start.strftime('%d.%m.%Y')} bis {forecast_end.strftime('%d.%m.%Y')}")
+    else:
+        st.info(f"📅 **Prognosezeitraum:** {forecast_start} bis {forecast_end}")
     
-    # Prepare weekly data
+    st.caption("📍 Geschäftszeiten: 7:00-22:00 Uhr")
+    
+    # Prepare weekly data - filter to business hours
     staffing_copy = staffing_plan.copy()
     staffing_copy["day_of_week"] = pd.to_datetime(staffing_copy["timestamp"]).dt.dayofweek
     staffing_copy["day_name"] = pd.to_datetime(staffing_copy["timestamp"]).dt.day_name()
     staffing_copy["hour"] = pd.to_datetime(staffing_copy["timestamp"]).dt.hour
+    
+    # Filter to business hours only
+    staffing_copy = staffing_copy[staffing_copy["hour"].isin(BUSINESS_HOURS)]
     
     # Create weekly pivot table
     weekly_schedule = staffing_copy.pivot_table(
@@ -2843,6 +2885,12 @@ def dienstleister_view():
         values="total_agents",
         aggfunc="mean"
     ).round(1)
+    
+    # Ensure all business hours columns exist
+    for h in BUSINESS_HOURS:
+        if h not in weekly_schedule.columns:
+            weekly_schedule[h] = 0
+    weekly_schedule = weekly_schedule[BUSINESS_HOURS]  # Reorder to business hours only
     
     day_names = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
     weekly_schedule.index = [day_names[i] for i in weekly_schedule.index]
@@ -2896,7 +2944,7 @@ def dienstleister_view():
         text=weekly_schedule.values.round(0).astype(int),
         texttemplate="%{text}",
         textfont={"size": 14, "color": "white"},
-        hovertemplate="Day: %{y}<br>Hour: %{x}<br>Agents: %{z:.1f}<extra></extra>"
+        hovertemplate="Tag: %{y}<br>Stunde: %{x}<br>Agenten: %{z:.1f}<extra></extra>"
     ))
     
     fig_weekly.update_layout(
@@ -2910,54 +2958,55 @@ def dienstleister_view():
     st.plotly_chart(fig_weekly, use_container_width=True)
     
     # Detailed Table
-    st.markdown("## 📋 Detaillierter Wochenplan")
+    st.markdown("## 📋 Detaillierter Wochenplan (7:00-22:00)")
     st.markdown("Anzahl benötigter Agenten pro Stunde:")
     
     weekly_table = weekly_schedule.copy()
     weekly_table.columns = [f"{h}:00" for h in weekly_table.columns]
-    weekly_table["Daily Avg"] = weekly_schedule.mean(axis=1).round(1)
-    weekly_table["Peak"] = weekly_schedule.max(axis=1).round(0).astype(int)
+    weekly_table["Tages-Ø"] = weekly_schedule.mean(axis=1).round(1)
+    weekly_table["Spitze"] = weekly_schedule.max(axis=1).round(0).astype(int)
     
     # Style the table
     st.dataframe(
         weekly_table.style.background_gradient(cmap="Blues", subset=weekly_table.columns[:-2])
             .format("{:.0f}", subset=weekly_table.columns[:-2])
-            .format("{:.1f}", subset=["Daily Avg"]),
+            .format("{:.1f}", subset=["Tages-Ø"]),
         use_container_width=True,
         height=320
     )
     
-    # Daily breakdown
-    st.markdown("## 📆 Tägliche Personalübersicht")
+    # Daily breakdown (business hours only)
+    st.markdown("## 📆 Tägliche Personalübersicht (7:00-22:00)")
     
     if "date" in staffing_plan.columns:
-        daily_summary = staffing_plan.groupby("date").agg({
+        # Use the already filtered staffing_copy with business hours
+        daily_summary = staffing_copy.groupby(pd.to_datetime(staffing_copy["timestamp"]).dt.date).agg({
             "total_volume": "sum",
             "total_agents": ["max", "mean"]
         }).reset_index()
-        daily_summary.columns = ["Date", "Total Tasks", "Peak Agents", "Avg Agents"]
-        daily_summary["Avg Agents"] = daily_summary["Avg Agents"].round(1)
-        daily_summary["Date"] = pd.to_datetime(daily_summary["Date"]).dt.strftime("%a, %b %d")
+        daily_summary.columns = ["Datum", "Aufgaben", "Max. Agenten", "Ø Agenten"]
+        daily_summary["Ø Agenten"] = daily_summary["Ø Agenten"].round(1)
+        daily_summary["Datum"] = pd.to_datetime(daily_summary["Datum"]).dt.strftime("%a, %d.%m.")
         
         fig_daily = go.Figure()
         fig_daily.add_trace(go.Bar(
-            x=daily_summary["Date"],
-            y=daily_summary["Peak Agents"],
-            name="Peak Agents",
+            x=daily_summary["Datum"],
+            y=daily_summary["Max. Agenten"],
+            name="Max. Agenten",
             marker_color="#4472C4"
         ))
         fig_daily.add_trace(go.Scatter(
-            x=daily_summary["Date"],
-            y=daily_summary["Avg Agents"],
-            name="Avg Agents",
+            x=daily_summary["Datum"],
+            y=daily_summary["Ø Agenten"],
+            name="Ø Agenten",
             mode="lines+markers",
             line=dict(color="#ED7D31", width=3),
             marker=dict(size=8)
         ))
         
         fig_daily.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Number of Agents",
+            xaxis_title="Datum",
+            yaxis_title="Anzahl Agenten",
             height=400,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
