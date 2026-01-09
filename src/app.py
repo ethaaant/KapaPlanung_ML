@@ -814,9 +814,17 @@ def compact_config():
                     )
                 
                 # Calculate adjusted leads
-                adjusted_leads = int(leads * (1 + growth_pct / 100))
-                if leads > 0:
-                    st.caption(f"📈 Angepasste Leads (mit Wachstum): **{adjusted_leads:,}**")
+                adjusted_leads = round(leads * (1 + growth_pct / 100))
+                difference = adjusted_leads - leads
+                
+                # Always show the adjusted leads info
+                if leads > 0 or growth_pct != 0:
+                    if difference > 0:
+                        st.caption(f"📈 Angepasste Leads: **{adjusted_leads:,}** (+{difference:,} durch {growth_pct:.1f}% Wachstum)")
+                    elif difference < 0:
+                        st.caption(f"📉 Angepasste Leads: **{adjusted_leads:,}** ({difference:,} durch {growth_pct:.1f}% Rückgang)")
+                    elif leads > 0:
+                        st.caption(f"➡️ Leads: **{leads:,}** (kein Wachstum angewendet)")
                 
                 # Store in session state
                 st.session_state.business_metrics[month_key] = {
