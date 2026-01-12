@@ -4947,6 +4947,580 @@ def _build_outlook_from_session(forecast_df, actual_df, start_date, end_date, ag
     return grouped
 
 
+def api_documentation_section():
+    """Interactive API documentation for admins."""
+    st.markdown("### 📚 API Dokumentation")
+    st.caption("Vollständige Dokumentation aller verfügbaren REST API Endpunkte.")
+    
+    # API Status Card
+    api_status_col1, api_status_col2, api_status_col3 = st.columns(3)
+    
+    with api_status_col1:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    border-radius: 10px; padding: 1.5rem; color: white;">
+            <h4 style="margin:0; color: white;">🌐 API Server</h4>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">
+                Port: 5000<br>
+                Starten: <code style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px;">python -m src.api.routes</code>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with api_status_col2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
+                    border-radius: 10px; padding: 1.5rem; color: white;">
+            <h4 style="margin:0; color: white;">📊 Verfügbare Endpunkte</h4>
+            <p style="margin: 0.5rem 0 0 0; font-size: 2rem; font-weight: bold;">15</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with api_status_col3:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                    border-radius: 10px; padding: 1.5rem; color: white;">
+            <h4 style="margin:0; color: white;">🔒 Authentifizierung</h4>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">
+                Keine (lokale API)<br>
+                Für Produktion: API-Keys aktivieren
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # API Endpoints Documentation
+    api_categories = {
+        "🏥 Health & Status": [
+            {
+                "method": "GET",
+                "endpoint": "/health",
+                "description": "Health Check - Überprüft, ob die API läuft",
+                "request": None,
+                "response": '''{
+    "status": "healthy",
+    "timestamp": "2026-01-15T10:30:00Z",
+    "version": "1.0.0"
+}''',
+                "curl": "curl http://localhost:5000/health"
+            },
+            {
+                "method": "GET",
+                "endpoint": "/status",
+                "description": "System Status - Zeigt ob Modell und Daten geladen sind",
+                "request": None,
+                "response": '''{
+    "model_loaded": true,
+    "data_loaded": true,
+    "model_targets": ["call_volume", "email_count"],
+    "data_rows": 8760
+}''',
+                "curl": "curl http://localhost:5000/status"
+            }
+        ],
+        "🔮 Forecasting": [
+            {
+                "method": "POST",
+                "endpoint": "/api/v1/forecast",
+                "description": "Erstellt eine Prognose für den angegebenen Zeitraum",
+                "request": '''{
+    "start_date": "2026-01-15",
+    "end_date": "2026-01-21",
+    "confidence_level": 0.95
+}''',
+                "response": '''{
+    "forecast": [
+        {"timestamp": "2026-01-15T08:00:00", "call_volume": 45, "email_count": 20},
+        ...
+    ],
+    "metadata": {
+        "start_date": "2026-01-15",
+        "end_date": "2026-01-21",
+        "horizon_hours": 168,
+        "targets": ["call_volume", "email_count"],
+        "generated_at": "2026-01-14T10:30:00Z"
+    }
+}''',
+                "curl": '''curl -X POST http://localhost:5000/api/v1/forecast \\
+  -H "Content-Type: application/json" \\
+  -d '{"start_date": "2026-01-15", "end_date": "2026-01-21"}'
+'''
+            },
+            {
+                "method": "GET",
+                "endpoint": "/api/v1/forecast/{id}",
+                "description": "Ruft eine gespeicherte Prognose ab",
+                "request": None,
+                "response": '''{
+    "forecast_id": "fc_20260115_abc123",
+    "created_at": "2026-01-14T10:30:00",
+    "forecast_start": "2026-01-15",
+    "forecast_end": "2026-01-21",
+    "predictions": {...}
+}''',
+                "curl": "curl http://localhost:5000/api/v1/forecast/fc_20260115_abc123"
+            },
+            {
+                "method": "POST",
+                "endpoint": "/api/v1/staffing",
+                "description": "Berechnet den Personalbedarf basierend auf Workload",
+                "request": '''{
+    "workload": [
+        {"timestamp": "2026-01-15T08:00:00", "calls": 100, "emails": 50}
+    ],
+    "config": {
+        "service_level": 0.8,
+        "service_time": 20,
+        "shrinkage": 0.3
+    }
+}''',
+                "response": '''{
+    "staffing": [
+        {"timestamp": "2026-01-15T08:00:00", "required_agents": 12}
+    ],
+    "summary": {
+        "total_fte_hours": 96,
+        "peak_agents": 15,
+        "avg_agents": 10
+    }
+}''',
+                "curl": '''curl -X POST http://localhost:5000/api/v1/staffing \\
+  -H "Content-Type: application/json" \\
+  -d '{"workload": [...], "config": {...}}'
+'''
+            }
+        ],
+        "🧠 Models": [
+            {
+                "method": "GET",
+                "endpoint": "/api/v1/models",
+                "description": "Listet alle verfügbaren Modelle auf",
+                "request": None,
+                "response": '''{
+    "models": [
+        {
+            "model_id": "workload_forecaster",
+            "version": "v1.0",
+            "created_at": "2026-01-14T10:00:00",
+            "model_type": "Prophet",
+            "metrics": {"rmse": 12.5, "mape": 8.2}
+        }
+    ]
+}''',
+                "curl": "curl http://localhost:5000/api/v1/models"
+            },
+            {
+                "method": "POST",
+                "endpoint": "/api/v1/models/{id}/activate",
+                "description": "Aktiviert eine bestimmte Modellversion",
+                "request": '''{
+    "version": "v1.0"
+}''',
+                "response": '''{
+    "success": true,
+    "message": "Activated version v1.0 for model workload_forecaster"
+}''',
+                "curl": '''curl -X POST http://localhost:5000/api/v1/models/workload_forecaster/activate \\
+  -H "Content-Type: application/json" \\
+  -d '{"version": "v1.0"}'
+'''
+            }
+        ],
+        "📤 Data Upload": [
+            {
+                "method": "POST",
+                "endpoint": "/api/v1/data/upload",
+                "description": "Lädt Datendateien hoch (multipart/form-data)",
+                "request": '''Form-Data:
+- file: Datei (CSV/Excel)
+- data_type: "calls" | "emails" | "outbound" | "auto"
+- overwrite: "true" | "false"''',
+                "response": '''{
+    "success": true,
+    "uploaded_files": [
+        {
+            "filename": "calls_data.csv",
+            "rows": 8760,
+            "columns": ["timestamp", "call_volume"],
+            "data_type": "calls",
+            "column_mapping": {"timestamp": "timestamp", "call_volume": "call_volume"}
+        }
+    ],
+    "summary": {"total_files": 1, "total_rows": 8760}
+}''',
+                "curl": '''curl -X POST http://localhost:5000/api/v1/data/upload \\
+  -F "file=@calls_data.csv" \\
+  -F "data_type=calls"
+'''
+            },
+            {
+                "method": "POST",
+                "endpoint": "/api/v1/data/upload/batch",
+                "description": "Batch-Upload mit Base64-kodierten Dateien",
+                "request": '''{
+    "files": [
+        {
+            "name": "calls.csv",
+            "type": "calls",
+            "content": "base64_encoded_content"
+        }
+    ],
+    "merge_strategy": "append"
+}''',
+                "response": '''{
+    "success": true,
+    "merge_strategy": "append",
+    "uploaded_files": [...],
+    "summary": {"total_files": 1, "successful": 1, "failed": 0}
+}''',
+                "curl": '''curl -X POST http://localhost:5000/api/v1/data/upload/batch \\
+  -H "Content-Type: application/json" \\
+  -d '{"files": [{"name": "calls.csv", "type": "calls", "content": "..."}]}'
+'''
+            },
+            {
+                "method": "GET",
+                "endpoint": "/api/v1/data/files",
+                "description": "Listet alle hochgeladenen Dateien auf",
+                "request": None,
+                "response": '''{
+    "files": [
+        {
+            "filename": "calls_data.csv",
+            "size_bytes": 125000,
+            "modified_at": "2026-01-15T10:30:00Z",
+            "rows": 8760
+        }
+    ],
+    "total": 1
+}''',
+                "curl": "curl http://localhost:5000/api/v1/data/files"
+            },
+            {
+                "method": "DELETE",
+                "endpoint": "/api/v1/data/files/{filename}",
+                "description": "Löscht eine hochgeladene Datei",
+                "request": None,
+                "response": '''{
+    "success": true,
+    "message": "File 'old_data.csv' deleted"
+}''',
+                "curl": "curl -X DELETE http://localhost:5000/api/v1/data/files/old_data.csv"
+            }
+        ],
+        "📊 Data Management": [
+            {
+                "method": "GET",
+                "endpoint": "/api/v1/data/summary",
+                "description": "Zeigt Zusammenfassung der geladenen Daten",
+                "request": None,
+                "response": '''{
+    "loaded": true,
+    "rows": 8760,
+    "columns": ["timestamp", "call_volume", "email_count"],
+    "date_range": {
+        "start": "2025-01-01T00:00:00",
+        "end": "2025-12-31T23:00:00"
+    },
+    "statistics": {
+        "call_volume": {"mean": 42.5, "std": 15.2},
+        "email_count": {"mean": 18.3, "std": 8.1}
+    }
+}''',
+                "curl": "curl http://localhost:5000/api/v1/data/summary"
+            },
+            {
+                "method": "POST",
+                "endpoint": "/api/v1/data/validate",
+                "description": "Validiert eine hochgeladene Datendatei",
+                "request": "Form-Data: file (CSV/Excel)",
+                "response": '''{
+    "valid": true,
+    "issues": [],
+    "summary": {
+        "rows": 8760,
+        "columns": 3,
+        "has_timestamp": true
+    }
+}''',
+                "curl": '''curl -X POST http://localhost:5000/api/v1/data/validate \\
+  -F "file=@data.csv"
+'''
+            },
+            {
+                "method": "POST",
+                "endpoint": "/api/v1/data/load",
+                "description": "Lädt Daten in den Speicher für Verarbeitung",
+                "request": '''{
+    "files": ["calls.csv", "emails.csv"],
+    "date_range": {
+        "start": "2025-01-01",
+        "end": "2026-01-01"
+    }
+}''',
+                "response": '''{
+    "success": true,
+    "rows": 8760,
+    "columns": ["timestamp", "call_volume", "email_count"],
+    "date_range": {"start": "2025-01-01", "end": "2025-12-31"},
+    "summary": {
+        "call_volume": {"mean": 42.5, "sum": 372300, "min": 5, "max": 120}
+    }
+}''',
+                "curl": '''curl -X POST http://localhost:5000/api/v1/data/load \\
+  -H "Content-Type: application/json" \\
+  -d '{"files": ["calls.csv"]}'
+'''
+            }
+        ]
+    }
+    
+    # Render API documentation
+    for category, endpoints in api_categories.items():
+        with st.expander(f"**{category}**", expanded=False):
+            for ep in endpoints:
+                # Method badge color
+                method_colors = {
+                    "GET": "#10b981",
+                    "POST": "#3b82f6",
+                    "PUT": "#f59e0b",
+                    "DELETE": "#ef4444"
+                }
+                method_color = method_colors.get(ep["method"], "#6b7280")
+                
+                st.markdown(f"""
+                <div style="
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 1rem;
+                    margin-bottom: 1rem;
+                ">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.5rem;">
+                        <span style="
+                            background: {method_color};
+                            color: white;
+                            padding: 4px 12px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 0.85rem;
+                        ">{ep["method"]}</span>
+                        <code style="
+                            background: #f3f4f6;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-size: 0.95rem;
+                        ">{ep["endpoint"]}</code>
+                    </div>
+                    <p style="color: #374151; margin: 0.5rem 0;">{ep["description"]}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Request/Response tabs
+                if ep["request"] or ep["response"]:
+                    req_resp_cols = st.columns(2)
+                    
+                    with req_resp_cols[0]:
+                        if ep["request"]:
+                            st.markdown("**Request:**")
+                            st.code(ep["request"], language="json")
+                        else:
+                            st.markdown("**Request:** Keine Parameter")
+                    
+                    with req_resp_cols[1]:
+                        st.markdown("**Response:**")
+                        st.code(ep["response"], language="json")
+                
+                # cURL example
+                if ep.get("curl"):
+                    with st.popover("📋 cURL Beispiel"):
+                        st.code(ep["curl"], language="bash")
+                        if st.button("📋 Kopieren", key=f"copy_{ep['endpoint']}"):
+                            st.write("✅ In Zwischenablage kopiert!")
+                
+                st.markdown("---")
+    
+    # Quick Test Section
+    st.markdown("### 🧪 API Quick Test")
+    st.caption("Testen Sie die API direkt aus der UI (API muss laufen auf Port 5000)")
+    
+    test_col1, test_col2 = st.columns([1, 2])
+    
+    with test_col1:
+        test_endpoint = st.selectbox(
+            "Endpunkt auswählen",
+            options=[
+                "GET /health",
+                "GET /status",
+                "GET /api/v1/models",
+                "GET /api/v1/data/files",
+                "GET /api/v1/data/summary"
+            ],
+            key="api_test_endpoint"
+        )
+        
+        api_base_url = st.text_input(
+            "API Base URL",
+            value="http://localhost:5000",
+            key="api_base_url"
+        )
+        
+        if st.button("🚀 Request senden", type="primary"):
+            try:
+                import requests
+                
+                method, path = test_endpoint.split(" ", 1)
+                url = f"{api_base_url}{path}"
+                
+                if method == "GET":
+                    response = requests.get(url, timeout=5)
+                else:
+                    response = requests.post(url, json={}, timeout=5)
+                
+                st.session_state.api_test_result = {
+                    "status_code": response.status_code,
+                    "response": response.json() if response.headers.get("content-type", "").startswith("application/json") else response.text,
+                    "url": url
+                }
+            except ImportError:
+                st.error("❌ `requests` Bibliothek nicht installiert. Installieren mit: `pip install requests`")
+            except Exception as e:
+                st.session_state.api_test_result = {
+                    "error": str(e),
+                    "url": url
+                }
+    
+    with test_col2:
+        if "api_test_result" in st.session_state:
+            result = st.session_state.api_test_result
+            
+            if "error" in result:
+                st.error(f"❌ Fehler: {result['error']}")
+                st.caption(f"URL: {result.get('url', 'N/A')}")
+            else:
+                status_color = "#10b981" if result["status_code"] == 200 else "#ef4444"
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;">
+                    <span style="
+                        background: {status_color};
+                        color: white;
+                        padding: 4px 12px;
+                        border-radius: 4px;
+                        font-weight: bold;
+                    ">Status: {result["status_code"]}</span>
+                    <code>{result.get("url", "")}</code>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.json(result["response"])
+    
+    # Code Examples Section
+    st.markdown("---")
+    st.markdown("### 💻 Code-Beispiele")
+    
+    code_tabs = st.tabs(["🐍 Python", "📜 JavaScript", "🦀 cURL"])
+    
+    with code_tabs[0]:
+        st.code('''import requests
+
+# API Base URL
+BASE_URL = "http://localhost:5000"
+
+# Health Check
+response = requests.get(f"{BASE_URL}/health")
+print(response.json())
+
+# Upload Datei
+with open("calls_data.csv", "rb") as f:
+    response = requests.post(
+        f"{BASE_URL}/api/v1/data/upload",
+        files={"file": f},
+        data={"data_type": "calls"}
+    )
+print(response.json())
+
+# Daten laden
+response = requests.post(f"{BASE_URL}/api/v1/data/load")
+print(response.json())
+
+# Forecast erstellen
+response = requests.post(
+    f"{BASE_URL}/api/v1/forecast",
+    json={
+        "start_date": "2026-01-15",
+        "end_date": "2026-01-21",
+        "confidence_level": 0.95
+    }
+)
+forecast = response.json()
+print(f"Forecast für {len(forecast['forecast'])} Stunden erstellt")
+''', language="python")
+    
+    with code_tabs[1]:
+        st.code('''// API Base URL
+const BASE_URL = "http://localhost:5000";
+
+// Health Check
+fetch(`${BASE_URL}/health`)
+  .then(res => res.json())
+  .then(data => console.log(data));
+
+// Upload Datei
+const formData = new FormData();
+formData.append("file", fileInput.files[0]);
+formData.append("data_type", "calls");
+
+fetch(`${BASE_URL}/api/v1/data/upload`, {
+  method: "POST",
+  body: formData
+})
+  .then(res => res.json())
+  .then(data => console.log(data));
+
+// Forecast erstellen
+fetch(`${BASE_URL}/api/v1/forecast`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    start_date: "2026-01-15",
+    end_date: "2026-01-21",
+    confidence_level: 0.95
+  })
+})
+  .then(res => res.json())
+  .then(data => console.log(data));
+''', language="javascript")
+    
+    with code_tabs[2]:
+        st.code('''# Health Check
+curl http://localhost:5000/health
+
+# Upload Datei
+curl -X POST http://localhost:5000/api/v1/data/upload \\
+  -F "file=@calls_data.csv" \\
+  -F "data_type=calls"
+
+# Daten laden
+curl -X POST http://localhost:5000/api/v1/data/load
+
+# Forecast erstellen
+curl -X POST http://localhost:5000/api/v1/forecast \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "start_date": "2026-01-15",
+    "end_date": "2026-01-21",
+    "confidence_level": 0.95
+  }'
+
+# Modelle auflisten
+curl http://localhost:5000/api/v1/models
+
+# Datei löschen
+curl -X DELETE http://localhost:5000/api/v1/data/files/old_data.csv
+''', language="bash")
+
+
 def admin_view():
     """Full admin view with all features."""
     # Render top navigation bar
@@ -4970,7 +5544,7 @@ def admin_view():
     capacity_config = compact_config()
     
     # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "📁 Daten",
         "🔍 Erkunden",
         "🧠 Training",
@@ -4979,6 +5553,7 @@ def admin_view():
         "📈 Analytics",
         "🔄 Review",
         "🏢 Call-Center",
+        "📚 API",
         "💾 Export"
     ])
     
@@ -5008,6 +5583,9 @@ def admin_view():
         call_center_management_section()
     
     with tab9:
+        api_documentation_section()
+    
+    with tab10:
         export_section()
 
 
