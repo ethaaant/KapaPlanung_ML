@@ -5343,7 +5343,19 @@ def api_documentation_section():
     
     # Quick Test Section
     st.markdown("### 🧪 API Quick Test")
-    st.caption("Testen Sie die API direkt aus der UI (API muss laufen auf Port 5000)")
+    
+    # Check if running on cloud or locally
+    import socket
+    is_local = "localhost" in socket.gethostname().lower() or "local" in socket.gethostname().lower()
+    
+    # Warning for cloud deployment
+    st.warning("""
+    ⚠️ **Hinweis:** Der API Quick Test funktioniert nur, wenn **beide Dienste lokal** laufen:
+    1. Diese Streamlit-App (`streamlit run src/app.py`)
+    2. Die API (`python -m src.api.routes`)
+    
+    Wenn Sie auf **Streamlit Cloud** sind, nutzen Sie stattdessen einen lokalen Terminal oder Postman.
+    """)
     
     test_col1, test_col2 = st.columns([1, 2])
     
@@ -5363,7 +5375,8 @@ def api_documentation_section():
         api_base_url = st.text_input(
             "API Base URL",
             value="http://localhost:5000",
-            key="api_base_url"
+            key="api_base_url",
+            help="Ändern Sie dies nur, wenn die API auf einem anderen Host/Port läuft"
         )
         
         if st.button("🚀 Request senden", type="primary"):
@@ -5381,22 +5394,52 @@ def api_documentation_section():
                 st.session_state.api_test_result = {
                     "status_code": response.status_code,
                     "response": response.json() if response.headers.get("content-type", "").startswith("application/json") else response.text,
-                    "url": url
+                    "url": url,
+                    "success": True
                 }
             except ImportError:
-                st.error("❌ `requests` Bibliothek nicht installiert. Installieren mit: `pip install requests`")
+                st.session_state.api_test_result = {
+                    "error": "❌ `requests` Bibliothek nicht installiert.",
+                    "url": api_base_url,
+                    "success": False
+                }
+            except requests.exceptions.ConnectionError:
+                st.session_state.api_test_result = {
+                    "error": "connection_refused",
+                    "url": url,
+                    "success": False
+                }
             except Exception as e:
                 st.session_state.api_test_result = {
                     "error": str(e),
-                    "url": url
+                    "url": url,
+                    "success": False
                 }
     
     with test_col2:
         if "api_test_result" in st.session_state:
             result = st.session_state.api_test_result
             
-            if "error" in result:
-                st.error(f"❌ Fehler: {result['error']}")
+            if result.get("error") == "connection_refused":
+                st.error("❌ **Verbindung verweigert**")
+                st.markdown("""
+                Die API ist nicht erreichbar. Mögliche Ursachen:
+                
+                1. **API läuft nicht:** Starten Sie die API in einem separaten Terminal:
+                   ```bash
+                   cd /pfad/zum/projekt
+                   source venv/bin/activate
+                   python -m src.api.routes
+                   ```
+                
+                2. **Cloud-Deployment:** Wenn diese App auf Streamlit Cloud läuft, 
+                   kann sie nicht auf Ihren lokalen `localhost:5000` zugreifen.
+                   Testen Sie die API stattdessen lokal mit cURL oder Postman.
+                
+                3. **Falscher Port:** Überprüfen Sie, ob die API auf dem angegebenen Port läuft.
+                """)
+            elif not result.get("success", True):
+                st.error(f"❌ Fehler: {result.get('error', 'Unbekannter Fehler')}")
                 st.caption(f"URL: {result.get('url', 'N/A')}")
             else:
                 status_color = "#10b981" if result["status_code"] == 200 else "#ef4444"
