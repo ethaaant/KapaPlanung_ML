@@ -1202,58 +1202,454 @@ def render_logout_button():
 
 
 def data_upload_section():
-    """Render data upload section."""
-    st.markdown("## 📁 Data Upload")
+    """Render data upload section with format guide and multi-table support."""
+    st.markdown("## 📁 Daten hochladen")
     
-    col1, col2 = st.columns(2)
+    # Initialize uploaded data preview in session state
+    if "uploaded_previews" not in st.session_state:
+        st.session_state.uploaded_previews = {}
     
-    with col1:
-        st.markdown("### Daten hochladen")
+    # ===========================================
+    # FORMAT GUIDE SECTION
+    # ===========================================
+    with st.expander("📋 **Datenformat-Anleitung** — Erforderliche Spalten und Formate", expanded=True):
+        st.markdown("""
+        Laden Sie Ihre historischen Daten hoch. Das System unterstützt **separate Dateien** für jeden Datentyp 
+        oder **eine kombinierte Datei** mit allen Spalten.
+        """)
         
-        uploaded_files = st.file_uploader(
-            "CSV- oder Excel-Dateien hochladen",
-            type=["csv", "xlsx", "xls"],
-            accept_multiple_files=True,
-            help="Historische Daten für Anrufe, E-Mails und Outbound-Aufgaben hochladen"
+        # Required columns table
+        st.markdown("#### Erforderliche Spalten")
+        
+        format_data = {
+            "Spaltenname": [
+                "timestamp", 
+                "call_volume", 
+                "email_count", 
+                "outbound_ook", 
+                "outbound_omk", 
+                "outbound_nb"
+            ],
+            "Datentyp": [
+                "Datum/Zeit", 
+                "Integer", 
+                "Integer", 
+                "Integer", 
+                "Integer", 
+                "Integer"
+            ],
+            "Erforderlich": [
+                "✅ Ja", 
+                "⚪ Optional", 
+                "⚪ Optional", 
+                "⚪ Optional", 
+                "⚪ Optional", 
+                "⚪ Optional"
+            ],
+            "Beschreibung": [
+                "Zeitstempel der Daten (YYYY-MM-DD HH:MM oder DD.MM.YYYY HH:MM)",
+                "Anzahl eingehender Anrufe pro Stunde",
+                "Anzahl eingehender E-Mails pro Stunde",
+                "Outbound-Anrufe: Auftragsbestätigung (OOK)",
+                "Outbound-Anrufe: Kundenkontakt (OMK)",
+                "Outbound-Anrufe: Nachbearbeitung (NB)"
+            ],
+            "Beispiel": [
+                "2026-01-15 08:00",
+                "42",
+                "18",
+                "5",
+                "8",
+                "3"
+            ]
+        }
+        
+        st.dataframe(
+            pd.DataFrame(format_data),
+            use_container_width=True,
+            hide_index=True
         )
         
-        if uploaded_files:
-            for uploaded_file in uploaded_files:
-                # Save to raw data directory
-                save_path = DATA_RAW / uploaded_file.name
-                with open(save_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                st.success(f"✅ Gespeichert: {uploaded_file.name}")
-    
-    with col2:
-        st.markdown("### Oder Beispieldaten verwenden")
+        # Alternative column names
+        st.markdown("#### Alternative Spaltennamen (werden automatisch erkannt)")
         
-        if st.button("🎲 Beispieldaten generieren", type="primary"):
+        alt_cols = st.columns(3)
+        with alt_cols[0]:
+            st.markdown("""
+            **Zeitstempel:**
+            - `timestamp`
+            - `date`
+            - `datetime`
+            - `zeit`
+            - `datum`
+            """)
+        with alt_cols[1]:
+            st.markdown("""
+            **Anrufe:**
+            - `call_volume`
+            - `calls`
+            - `anrufe`
+            - `inbound_calls`
+            - `call_count`
+            """)
+        with alt_cols[2]:
+            st.markdown("""
+            **E-Mails:**
+            - `email_count`
+            - `emails`
+            - `email`
+            - `e-mail`
+            - `mail_count`
+            """)
+        
+        # File format info
+        st.markdown("#### Unterstützte Dateiformate")
+        st.info("""
+        📄 **CSV** — Trennzeichen: `;` oder `,` (automatische Erkennung)  
+        📊 **Excel** — `.xlsx` oder `.xls` (erstes Blatt wird verwendet)
+        """)
+    
+    st.markdown("---")
+    
+    # ===========================================
+    # MULTI-TABLE UPLOAD SECTION
+    # ===========================================
+    st.markdown("### 📤 Dateien hochladen")
+    
+    upload_tabs = st.tabs([
+        "📁 Alle Daten (eine Datei)",
+        "📞 Anrufe",
+        "📧 E-Mails", 
+        "📤 Outbound",
+        "➕ Weitere Tabelle"
+    ])
+    
+    # Combined upload
+    with upload_tabs[0]:
+        st.markdown("Laden Sie eine Datei mit allen Spalten hoch:")
+        combined_file = st.file_uploader(
+            "Kombinierte Datei",
+            type=["csv", "xlsx", "xls"],
+            key="combined_upload",
+            help="Eine Datei mit timestamp und allen relevanten Datenspalten"
+        )
+        
+        if combined_file:
+            _process_uploaded_file(combined_file, "combined")
+    
+    # Calls upload
+    with upload_tabs[1]:
+        st.markdown("Laden Sie Anrufdaten separat hoch:")
+        st.caption("Erforderliche Spalten: `timestamp`, `call_volume` (oder Alternativen)")
+        calls_file = st.file_uploader(
+            "Anrufdaten",
+            type=["csv", "xlsx", "xls"],
+            key="calls_upload"
+        )
+        
+        if calls_file:
+            _process_uploaded_file(calls_file, "calls")
+    
+    # Emails upload
+    with upload_tabs[2]:
+        st.markdown("Laden Sie E-Mail-Daten separat hoch:")
+        st.caption("Erforderliche Spalten: `timestamp`, `email_count` (oder Alternativen)")
+        emails_file = st.file_uploader(
+            "E-Mail-Daten",
+            type=["csv", "xlsx", "xls"],
+            key="emails_upload"
+        )
+        
+        if emails_file:
+            _process_uploaded_file(emails_file, "emails")
+    
+    # Outbound upload
+    with upload_tabs[3]:
+        st.markdown("Laden Sie Outbound-Daten separat hoch:")
+        st.caption("Erforderliche Spalten: `timestamp`, `outbound_ook`, `outbound_omk`, `outbound_nb` (oder kombiniert als `outbound_total`)")
+        outbound_file = st.file_uploader(
+            "Outbound-Daten",
+            type=["csv", "xlsx", "xls"],
+            key="outbound_upload"
+        )
+        
+        if outbound_file:
+            _process_uploaded_file(outbound_file, "outbound")
+    
+    # Additional table upload
+    with upload_tabs[4]:
+        st.markdown("Laden Sie zusätzliche Daten hoch:")
+        st.caption("Für benutzerdefinierte Daten oder zusätzliche Metriken")
+        
+        custom_name = st.text_input("Name für diese Tabelle", placeholder="z.B. Feiertage, Marketing-Events")
+        custom_file = st.file_uploader(
+            "Zusätzliche Daten",
+            type=["csv", "xlsx", "xls"],
+            key="custom_upload"
+        )
+        
+        if custom_file and custom_name:
+            _process_uploaded_file(custom_file, f"custom_{custom_name}")
+    
+    # ===========================================
+    # UPLOADED DATA PREVIEW
+    # ===========================================
+    if st.session_state.uploaded_previews:
+        st.markdown("---")
+        st.markdown("### 👁️ Datenvorschau — Hochgeladene Dateien")
+        
+        for file_key, preview_data in st.session_state.uploaded_previews.items():
+            with st.expander(f"📄 **{preview_data['filename']}** — {preview_data['rows']:,} Zeilen, {preview_data['cols']} Spalten", expanded=True):
+                
+                # Column analysis
+                st.markdown("#### Spaltenübersicht")
+                
+                col_analysis = []
+                df = preview_data['dataframe']
+                
+                for col in df.columns:
+                    col_info = {
+                        "Spaltenname": col,
+                        "Datentyp": str(df[col].dtype),
+                        "Nicht-leer": f"{df[col].notna().sum():,} ({df[col].notna().mean()*100:.1f}%)",
+                        "Leer/NaN": f"{df[col].isna().sum():,}",
+                        "Eindeutige Werte": f"{df[col].nunique():,}",
+                        "Beispielwerte": ", ".join(str(x) for x in df[col].dropna().head(3).tolist())
+                    }
+                    
+                    # Add statistics for numeric columns
+                    if pd.api.types.is_numeric_dtype(df[col]):
+                        col_info["Min"] = f"{df[col].min():,.2f}" if df[col].notna().any() else "-"
+                        col_info["Max"] = f"{df[col].max():,.2f}" if df[col].notna().any() else "-"
+                        col_info["Durchschnitt"] = f"{df[col].mean():,.2f}" if df[col].notna().any() else "-"
+                    else:
+                        col_info["Min"] = "-"
+                        col_info["Max"] = "-"
+                        col_info["Durchschnitt"] = "-"
+                    
+                    col_analysis.append(col_info)
+                
+                analysis_df = pd.DataFrame(col_analysis)
+                st.dataframe(analysis_df, use_container_width=True, hide_index=True)
+                
+                # Column mapping status
+                st.markdown("#### Spalten-Mapping Status")
+                
+                mapping_status = _check_column_mapping(df)
+                status_cols = st.columns(6)
+                
+                status_items = [
+                    ("timestamp", "⏰ Zeitstempel"),
+                    ("call_volume", "📞 Anrufe"),
+                    ("email_count", "📧 E-Mails"),
+                    ("outbound_ook", "📤 OOK"),
+                    ("outbound_omk", "📤 OMK"),
+                    ("outbound_nb", "📤 NB")
+                ]
+                
+                for i, (col_key, col_label) in enumerate(status_items):
+                    with status_cols[i]:
+                        if mapping_status.get(col_key):
+                            st.success(f"✅ {col_label}")
+                            st.caption(f"→ {mapping_status[col_key]}")
+                        else:
+                            st.warning(f"❌ {col_label}")
+                            st.caption("Nicht gefunden")
+                
+                # Data preview table
+                st.markdown("#### Datenvorschau (erste 10 Zeilen)")
+                st.dataframe(df.head(10), use_container_width=True, hide_index=True)
+                
+                # Data quality indicators
+                st.markdown("#### Datenqualität")
+                quality_cols = st.columns(4)
+                
+                with quality_cols[0]:
+                    completeness = (df.notna().sum().sum() / (len(df) * len(df.columns))) * 100
+                    st.metric("Vollständigkeit", f"{completeness:.1f}%")
+                
+                with quality_cols[1]:
+                    duplicates = df.duplicated().sum()
+                    st.metric("Duplikate", f"{duplicates:,}")
+                
+                with quality_cols[2]:
+                    if "timestamp" in mapping_status and mapping_status["timestamp"]:
+                        ts_col = mapping_status["timestamp"]
+                        try:
+                            ts_series = pd.to_datetime(df[ts_col])
+                            date_range = (ts_series.max() - ts_series.min()).days
+                            st.metric("Zeitraum", f"{date_range} Tage")
+                        except:
+                            st.metric("Zeitraum", "N/A")
+                    else:
+                        st.metric("Zeitraum", "Keine Zeitspalte")
+                
+                with quality_cols[3]:
+                    st.metric("Speichergröße", f"{df.memory_usage(deep=True).sum() / 1024:.1f} KB")
+                
+                # Remove button
+                if st.button(f"🗑️ Entfernen", key=f"remove_{file_key}"):
+                    del st.session_state.uploaded_previews[file_key]
+                    st.rerun()
+    
+    # ===========================================
+    # SAMPLE DATA OPTION
+    # ===========================================
+    st.markdown("---")
+    
+    sample_col1, sample_col2 = st.columns([1, 3])
+    
+    with sample_col1:
+        st.markdown("### Beispieldaten")
+        if st.button("🎲 Beispieldaten generieren", type="secondary"):
             with st.spinner("Generiere Beispieldaten..."):
                 create_sample_data(DATA_RAW)
             st.success("✅ Beispieldaten generiert!")
             st.session_state.data_loaded = False
+            st.session_state.uploaded_previews = {}
     
-    # Load data button
+    with sample_col2:
+        st.caption("""
+        Wenn Sie keine eigenen Daten haben, können Sie Beispieldaten generieren.
+        Diese enthalten realistische Muster für Anrufe, E-Mails und Outbound-Kontakte
+        über einen Zeitraum von 6 Monaten.
+        """)
+    
+    # ===========================================
+    # LOAD DATA BUTTON
+    # ===========================================
     st.markdown("---")
     
-    if st.button("📊 Daten laden", type="primary"):
-        with st.spinner("Lade Daten..."):
+    load_col1, load_col2 = st.columns([1, 3])
+    
+    with load_col1:
+        if st.button("📊 Daten laden & verarbeiten", type="primary", use_container_width=True):
+            with st.spinner("Lade und verarbeite Daten..."):
+                try:
+                    # Save all uploaded previews to raw directory first
+                    for file_key, preview_data in st.session_state.uploaded_previews.items():
+                        save_path = DATA_RAW / preview_data['filename']
+                        preview_data['dataframe'].to_csv(save_path, index=False)
+                    
+                    loader = DataLoader()
+                    data = loader.load_all()
+                    
+                    if not data:
+                        st.error("Keine Datendateien gefunden. Bitte Daten hochladen oder Beispieldaten generieren.")
+                        return
+                    
+                    combined = loader.combine_data()
+                    st.session_state.combined_data = combined
+                    st.session_state.data_loaded = True
+                    st.session_state.loader = loader
+                    st.success(f"✅ {len(combined):,} stündliche Datensätze erfolgreich geladen!")
+                except Exception as e:
+                    st.error(f"Fehler beim Laden der Daten: {str(e)}")
+    
+    with load_col2:
+        if st.session_state.get("data_loaded"):
+            st.success("✅ Daten sind geladen und bereit für die Analyse.")
+        else:
+            st.info("👆 Klicken Sie auf 'Daten laden & verarbeiten', um die hochgeladenen Daten zu verarbeiten.")
+
+
+def _process_uploaded_file(uploaded_file, file_type: str):
+    """Process an uploaded file and store preview in session state."""
+    try:
+        # Read file
+        if uploaded_file.name.endswith('.csv'):
+            # Try different separators
             try:
-                loader = DataLoader()
-                data = loader.load_all()
-                
-                if not data:
-                    st.error("Keine Datendateien gefunden. Bitte Daten hochladen oder Beispieldaten generieren.")
-                    return
-                
-                combined = loader.combine_data()
-                st.session_state.combined_data = combined
-                st.session_state.data_loaded = True
-                st.session_state.loader = loader
-                st.success(f"✅ {len(combined)} stündliche Datensätze geladen")
-            except Exception as e:
-                st.error(f"Fehler beim Laden der Daten: {str(e)}")
+                df = pd.read_csv(uploaded_file, sep=';')
+                if len(df.columns) < 2:
+                    uploaded_file.seek(0)
+                    df = pd.read_csv(uploaded_file, sep=',')
+            except:
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+        
+        # Store in session state
+        st.session_state.uploaded_previews[file_type] = {
+            'filename': uploaded_file.name,
+            'dataframe': df,
+            'rows': len(df),
+            'cols': len(df.columns),
+            'uploaded_at': datetime.now().isoformat()
+        }
+        
+        # Save to raw directory
+        save_path = DATA_RAW / uploaded_file.name
+        with open(save_path, "wb") as f:
+            uploaded_file.seek(0)
+            f.write(uploaded_file.getbuffer())
+        
+        st.success(f"✅ Datei '{uploaded_file.name}' hochgeladen ({len(df):,} Zeilen)")
+        
+    except Exception as e:
+        st.error(f"❌ Fehler beim Verarbeiten von '{uploaded_file.name}': {str(e)}")
+
+
+def _check_column_mapping(df: pd.DataFrame) -> dict:
+    """Check which required columns are present in the dataframe."""
+    mapping = {}
+    
+    # Timestamp variations
+    timestamp_cols = ['timestamp', 'date', 'datetime', 'zeit', 'datum', 'time', 'Timestamp', 'Date', 'DateTime']
+    for col in timestamp_cols:
+        if col in df.columns:
+            mapping['timestamp'] = col
+            break
+    
+    # Try to detect datetime columns
+    if 'timestamp' not in mapping:
+        for col in df.columns:
+            try:
+                pd.to_datetime(df[col].head(10))
+                mapping['timestamp'] = col
+                break
+            except:
+                pass
+    
+    # Call volume variations
+    call_cols = ['call_volume', 'calls', 'anrufe', 'inbound_calls', 'call_count', 'Calls', 'Anrufe', 'CallVolume']
+    for col in call_cols:
+        if col in df.columns:
+            mapping['call_volume'] = col
+            break
+    
+    # Email count variations
+    email_cols = ['email_count', 'emails', 'email', 'e-mail', 'mail_count', 'Email', 'Emails', 'EmailCount']
+    for col in email_cols:
+        if col in df.columns:
+            mapping['email_count'] = col
+            break
+    
+    # Outbound variations
+    outbound_ook_cols = ['outbound_ook', 'ook', 'OOK', 'outbound_order']
+    for col in outbound_ook_cols:
+        if col in df.columns:
+            mapping['outbound_ook'] = col
+            break
+    
+    outbound_omk_cols = ['outbound_omk', 'omk', 'OMK', 'outbound_contact']
+    for col in outbound_omk_cols:
+        if col in df.columns:
+            mapping['outbound_omk'] = col
+            break
+    
+    outbound_nb_cols = ['outbound_nb', 'nb', 'NB', 'outbound_followup']
+    for col in outbound_nb_cols:
+        if col in df.columns:
+            mapping['outbound_nb'] = col
+            break
+    
+    # Check for combined outbound
+    if 'outbound_total' in df.columns:
+        mapping['outbound_total'] = 'outbound_total'
+    
+    return mapping
 
 
 def data_exploration_section():
