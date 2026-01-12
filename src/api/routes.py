@@ -994,5 +994,11 @@ def run_api(host: str = "0.0.0.0", port: int = 5000, debug: bool = False):
 
 
 if __name__ == "__main__":
-    run_api(debug=True)
+    import os
+    
+    # Railway uses PORT environment variable
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV", "development") == "development"
+    
+    run_api(host="0.0.0.0", port=port, debug=debug)
 

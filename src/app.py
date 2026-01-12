@@ -5372,12 +5372,18 @@ def api_documentation_section():
             key="api_test_endpoint"
         )
         
+        # Check for configured API URL in environment or use default
+        import os
+        default_api_url = os.environ.get("API_BASE_URL", "http://localhost:5000")
+        
         api_base_url = st.text_input(
             "API Base URL",
-            value="http://localhost:5000",
+            value=default_api_url,
             key="api_base_url",
-            help="Ändern Sie dies nur, wenn die API auf einem anderen Host/Port läuft"
+            help="Lokal: http://localhost:5000 | Railway: https://your-app.up.railway.app"
         )
+        
+        st.caption("💡 Tipp: Für Railway-API die URL aus dem Railway Dashboard einfügen")
         
         if st.button("🚀 Request senden", type="primary"):
             try:
