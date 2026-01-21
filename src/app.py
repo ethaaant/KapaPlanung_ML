@@ -617,6 +617,388 @@ st.markdown("""
     ::-webkit-scrollbar-thumb:hover {
         background: #a1a1a1;
     }
+    
+    /* ============================================
+       WIZARD WORKFLOW STYLES
+       ============================================ */
+    
+    /* Status Dashboard Header */
+    .status-dashboard {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .status-row {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .status-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 1rem;
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        min-width: 180px;
+    }
+    
+    .status-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+    
+    .status-icon.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .status-icon.pending {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    
+    .status-icon.inactive {
+        background: #e5e7eb;
+        color: #9ca3af;
+    }
+    
+    .status-text {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .status-label {
+        font-size: 0.7rem;
+        color: #6b7280 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+    
+    .status-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1f2937 !important;
+    }
+    
+    /* Wizard Steps Container */
+    .wizard-container {
+        margin-top: 1rem;
+    }
+    
+    .wizard-steps {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        margin-bottom: 2rem;
+        padding: 1rem 2rem;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .wizard-step {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .wizard-step:hover {
+        background: #f8fafc;
+    }
+    
+    .wizard-step.active {
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    }
+    
+    .wizard-step.active .step-number,
+    .wizard-step.active .step-label {
+        color: white !important;
+    }
+    
+    .wizard-step.completed {
+        background: #ecfdf5;
+    }
+    
+    .wizard-step.completed .step-number {
+        background: #10b981;
+        color: white !important;
+    }
+    
+    .step-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #6b7280 !important;
+    }
+    
+    .wizard-step.active .step-number {
+        background: rgba(255,255,255,0.2);
+    }
+    
+    .step-label {
+        font-weight: 500;
+        color: #4b5563 !important;
+        font-size: 0.9rem;
+    }
+    
+    .step-connector {
+        width: 60px;
+        height: 2px;
+        background: #e5e7eb;
+        margin: 0 0.5rem;
+    }
+    
+    .step-connector.completed {
+        background: linear-gradient(90deg, #10b981, #4f46e5);
+    }
+    
+    /* Enhanced Card Styles */
+    .card-elevated {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+        transition: box-shadow 0.2s ease;
+    }
+    
+    .card-elevated:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .card-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    
+    .card-icon.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .card-icon.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .card-icon.purple { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    .card-icon.orange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .card-icon.pink { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); }
+    
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937 !important;
+        margin: 0;
+    }
+    
+    .card-subtitle {
+        font-size: 0.8rem;
+        color: #6b7280 !important;
+        margin: 0;
+    }
+    
+    /* Action Cards Grid */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .action-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid #e5e7eb;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .action-card:hover {
+        border-color: #4f46e5;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+        transform: translateY(-2px);
+    }
+    
+    /* Quick Stats Row */
+    .quick-stats {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .quick-stat {
+        flex: 1;
+        min-width: 150px;
+        background: white;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .quick-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937 !important;
+        line-height: 1.2;
+    }
+    
+    .quick-stat-label {
+        font-size: 0.75rem;
+        color: #6b7280 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.25rem;
+    }
+    
+    /* Progress Indicator */
+    .progress-ring {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+    
+    .progress-steps {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .progress-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #e5e7eb;
+    }
+    
+    .progress-dot.active {
+        background: #4f46e5;
+    }
+    
+    .progress-dot.completed {
+        background: #10b981;
+    }
+    
+    /* Workflow Action Button */
+    .workflow-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+        color: white !important;
+        border: none;
+        border-radius: 10px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .workflow-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+    
+    .workflow-btn.secondary {
+        background: white;
+        color: #4f46e5 !important;
+        border: 1px solid #4f46e5;
+    }
+    
+    .workflow-btn.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    
+    /* Info Box */
+    .info-box {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #93c5fd;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0;
+    }
+    
+    .info-box-title {
+        font-weight: 600;
+        color: #1e40af !important;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .info-box-content {
+        color: #1e3a8a !important;
+        font-size: 0.9rem;
+    }
+    
+    /* Success Box */
+    .success-box {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid #6ee7b7;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0;
+    }
+    
+    .success-box-title {
+        font-weight: 600;
+        color: #065f46 !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Warning Box */
+    .warning-box {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border: 1px solid #fcd34d;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0;
+    }
+    
+    .warning-box-title {
+        font-weight: 600;
+        color: #92400e !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -737,6 +1119,131 @@ def render_top_bar():
                 <span class="role">{role_display}</span>
             </div>
         </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_status_dashboard():
+    """Render the status dashboard showing current workflow state."""
+    # Determine status for each step
+    data_loaded = st.session_state.get("data_loaded", False)
+    data_info = ""
+    if data_loaded and st.session_state.get("combined_data") is not None:
+        df = st.session_state.combined_data
+        data_info = f"{len(df):,} Datenpunkte"
+    
+    model_trained = st.session_state.get("model_trained", False)
+    model_info = ""
+    if model_trained:
+        model_source = st.session_state.get("model_source", "trained")
+        if model_source == "loaded":
+            model_info = "Geladen"
+        else:
+            model_info = "Trainiert"
+    
+    forecast_ready = st.session_state.get("forecast_df") is not None
+    forecast_info = ""
+    if forecast_ready:
+        forecast_df = st.session_state.forecast_df
+        if len(forecast_df) > 0:
+            forecast_info = f"{len(forecast_df)} Stunden"
+    
+    # Build the HTML
+    st.markdown(f"""
+    <div class="status-dashboard">
+        <div class="status-row">
+            <div class="status-item">
+                <div class="status-icon {'success' if data_loaded else 'inactive'}">
+                    {'✓' if data_loaded else '1'}
+                </div>
+                <div class="status-text">
+                    <span class="status-label">Daten</span>
+                    <span class="status-value">{'Geladen' if data_loaded else 'Nicht geladen'}</span>
+                    {f'<span style="font-size: 0.7rem; color: #6b7280;">{data_info}</span>' if data_info else ''}
+                </div>
+            </div>
+            
+            <div class="status-item">
+                <div class="status-icon {'success' if model_trained else 'pending' if data_loaded else 'inactive'}">
+                    {'✓' if model_trained else '2'}
+                </div>
+                <div class="status-text">
+                    <span class="status-label">Modell</span>
+                    <span class="status-value">{'Bereit' if model_trained else 'Ausstehend'}</span>
+                    {f'<span style="font-size: 0.7rem; color: #6b7280;">{model_info}</span>' if model_info else ''}
+                </div>
+            </div>
+            
+            <div class="status-item">
+                <div class="status-icon {'success' if forecast_ready else 'pending' if model_trained else 'inactive'}">
+                    {'✓' if forecast_ready else '3'}
+                </div>
+                <div class="status-text">
+                    <span class="status-label">Forecast</span>
+                    <span class="status-value">{'Erstellt' if forecast_ready else 'Ausstehend'}</span>
+                    {f'<span style="font-size: 0.7rem; color: #6b7280;">{forecast_info}</span>' if forecast_info else ''}
+                </div>
+            </div>
+            
+            <div class="status-item" style="margin-left: auto; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+                <div class="status-icon" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: white;">
+                    📅
+                </div>
+                <div class="status-text">
+                    <span class="status-label">Aktueller Monat</span>
+                    <span class="status-value">{datetime.now().strftime('%B %Y')}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_wizard_steps(current_step: int = 1):
+    """Render the wizard step indicator."""
+    steps = [
+        ("Daten", "📁"),
+        ("Training", "🧠"),
+        ("Forecast", "🔮"),
+        ("Kapazität", "👥")
+    ]
+    
+    # Determine completed steps based on session state
+    data_loaded = st.session_state.get("data_loaded", False)
+    model_trained = st.session_state.get("model_trained", False)
+    forecast_ready = st.session_state.get("forecast_df") is not None
+    
+    completed = [data_loaded, model_trained, forecast_ready, False]
+    
+    steps_html = ""
+    for i, (label, icon) in enumerate(steps):
+        step_num = i + 1
+        is_active = step_num == current_step
+        is_completed = completed[i] if i < len(completed) else False
+        
+        step_class = "wizard-step"
+        if is_active:
+            step_class += " active"
+        elif is_completed:
+            step_class += " completed"
+        
+        connector_class = "step-connector"
+        if i < len(steps) - 1 and completed[i]:
+            connector_class += " completed"
+        
+        steps_html += f"""
+        <div class="{step_class}">
+            <div class="step-number">{icon if is_completed or is_active else step_num}</div>
+            <span class="step-label">{label}</span>
+        </div>
+        """
+        
+        if i < len(steps) - 1:
+            steps_html += f'<div class="{connector_class}"></div>'
+    
+    st.markdown(f"""
+    <div class="wizard-steps">
+        {steps_html}
     </div>
     """, unsafe_allow_html=True)
 
@@ -3551,24 +4058,29 @@ def dienstleister_view():
     # Header with logout
     col_header, col_logout = st.columns([9, 1])
     with col_header:
-        st.markdown('<h1 class="main-header">📅 Agent Staffing Schedule</h1>', unsafe_allow_html=True)
+        st.markdown('<h1 class="main-header">📅 Personalplanung</h1>', unsafe_allow_html=True)
         st.markdown(
-            '<p class="sub-header">View the weekly staffing requirements</p>',
+            '<p class="sub-header">Wöchentliche Einsatzplanung und Personalbedarf</p>',
             unsafe_allow_html=True
         )
     with col_logout:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🚪 Sign Out", key="logout_dienstleister", use_container_width=True):
+        if st.button("🚪 Abmelden", key="logout_dienstleister", use_container_width=True):
             logout()
             st.rerun()
     
     # Check if we have a staffing plan
     if not st.session_state.get("forecast_generated", False):
-        st.warning("⏳ No staffing plan available yet. Please wait for an administrator to generate the forecast.")
+        st.markdown("""
+        <div class="warning-box">
+            <div class="warning-box-title">⏳ Keine Planung verfügbar</div>
+            <p style="color: #92400e; margin: 0;">Bitte warten Sie, bis ein Administrator die Prognose erstellt hat.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Try to load existing forecast if available
-        st.info("💡 If a forecast was previously generated, click below to reload it.")
-        if st.button("🔄 Check for Available Forecast"):
+        st.info("💡 Falls bereits eine Prognose erstellt wurde, klicken Sie unten zum Neuladen.")
+        if st.button("🔄 Nach Prognose suchen"):
             st.rerun()
         return
     
@@ -5571,71 +6083,202 @@ curl -X DELETE http://localhost:5000/api/v1/data/files/old_data.csv
 
 
 def admin_view():
-    """Full admin view with all features."""
+    """Full admin view with wizard-based workflow."""
     # Render top navigation bar
     render_top_bar()
     
     # Header with logout
     col_header, col_logout = st.columns([9, 1])
     with col_header:
-        st.markdown('<h1 class="main-header">📊 Workforce Planning ML</h1>', unsafe_allow_html=True)
+        st.markdown('<h1 class="main-header">📊 Kapazitätsplanung</h1>', unsafe_allow_html=True)
         st.markdown(
-            '<p class="sub-header">Forecast customer service workload and plan agent capacity</p>',
+            '<p class="sub-header">Monatlicher Workflow: Daten laden → Modell trainieren → Forecast erstellen → Kapazität planen</p>',
             unsafe_allow_html=True
         )
     with col_logout:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🚪 Sign Out", key="logout_top", use_container_width=True):
+        if st.button("🚪 Abmelden", key="logout_top", use_container_width=True):
             logout()
             st.rerun()
     
-    # Compact configuration panel
+    # Status Dashboard - shows current workflow state
+    render_status_dashboard()
+    
+    # Compact configuration panel (collapsed by default)
     capacity_config = compact_config()
     
-    # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
-        "📁 Daten",
-        "🔍 Erkunden",
-        "🧠 Training",
-        "🔮 Forecast",
-        "📊 Outlook",
-        "📈 Analytics",
-        "🔄 Review",
-        "🏢 Call-Center",
-        "📚 API",
-        "💾 Export"
+    # Initialize wizard step in session state
+    if "wizard_step" not in st.session_state:
+        st.session_state.wizard_step = 1
+    
+    # Main workflow tabs - simplified to 4 core steps + extras
+    main_tabs = st.tabs([
+        "📁 1. Daten",
+        "🧠 2. Training", 
+        "🔮 3. Forecast",
+        "👥 4. Kapazität",
+        "📊 Mehr"
     ])
     
-    with tab1:
-        data_upload_section()
+    # ========== STEP 1: DATA ==========
+    with main_tabs[0]:
+        st.markdown("""
+        <div class="card-elevated">
+            <div class="card-header">
+                <div class="card-icon blue">📁</div>
+                <div>
+                    <h3 class="card-title">Schritt 1: Daten laden</h3>
+                    <p class="card-subtitle">Historische Daten hochladen und prüfen</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Sub-tabs for data section
+        data_tabs = st.tabs(["📤 Upload", "🔍 Erkunden", "📊 Qualität"])
+        
+        with data_tabs[0]:
+            data_upload_section()
+        
+        with data_tabs[1]:
+            data_exploration_section()
+        
+        with data_tabs[2]:
+            # Quick data quality summary
+            if st.session_state.get("combined_data") is not None:
+                df = st.session_state.combined_data
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Datenpunkte", f"{len(df):,}")
+                with col2:
+                    if "timestamp" in df.columns:
+                        date_range = (df["timestamp"].max() - df["timestamp"].min()).days
+                        st.metric("Zeitraum", f"{date_range} Tage")
+                with col3:
+                    missing = df.isnull().sum().sum()
+                    st.metric("Fehlende Werte", f"{missing:,}")
+                with col4:
+                    completeness = (1 - df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100
+                    st.metric("Vollständigkeit", f"{completeness:.1f}%")
+            else:
+                st.info("Bitte laden Sie zuerst Daten hoch.")
     
-    with tab2:
-        data_exploration_section()
+    # ========== STEP 2: TRAINING ==========
+    with main_tabs[1]:
+        st.markdown("""
+        <div class="card-elevated">
+            <div class="card-header">
+                <div class="card-icon purple">🧠</div>
+                <div>
+                    <h3 class="card-title">Schritt 2: Modell trainieren</h3>
+                    <p class="card-subtitle">ML-Modell trainieren oder gespeichertes Modell laden</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Check prerequisites
+        if not st.session_state.get("data_loaded", False):
+            st.markdown("""
+            <div class="warning-box">
+                <div class="warning-box-title">⚠️ Voraussetzung nicht erfüllt</div>
+                <p style="color: #92400e; margin: 0;">Bitte laden Sie zuerst Daten in Schritt 1 hoch.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            training_section()
     
-    with tab3:
-        training_section()
+    # ========== STEP 3: FORECAST ==========
+    with main_tabs[2]:
+        st.markdown("""
+        <div class="card-elevated">
+            <div class="card-header">
+                <div class="card-icon green">🔮</div>
+                <div>
+                    <h3 class="card-title">Schritt 3: Forecast erstellen</h3>
+                    <p class="card-subtitle">Prognose für den gewünschten Zeitraum generieren</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Check prerequisites
+        if not st.session_state.get("model_trained", False):
+            st.markdown("""
+            <div class="warning-box">
+                <div class="warning-box-title">⚠️ Voraussetzung nicht erfüllt</div>
+                <p style="color: #92400e; margin: 0;">Bitte trainieren oder laden Sie zuerst ein Modell in Schritt 2.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Sub-tabs for forecast
+            forecast_tabs = st.tabs(["📈 Erstellen", "📊 Ergebnisse", "🔄 Review"])
+            
+            with forecast_tabs[0]:
+                forecast_section(capacity_config)
+            
+            with forecast_tabs[1]:
+                results_section()
+            
+            with forecast_tabs[2]:
+                review_forecasts_section()
     
-    with tab4:
-        forecast_section(capacity_config)
-        results_section()
+    # ========== STEP 4: CAPACITY ==========
+    with main_tabs[3]:
+        st.markdown("""
+        <div class="card-elevated">
+            <div class="card-header">
+                <div class="card-icon orange">👥</div>
+                <div>
+                    <h3 class="card-title">Schritt 4: Kapazität planen</h3>
+                    <p class="card-subtitle">Personalbedarf berechnen und optimieren</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Check prerequisites
+        if st.session_state.get("forecast_df") is None:
+            st.markdown("""
+            <div class="warning-box">
+                <div class="warning-box-title">⚠️ Voraussetzung nicht erfüllt</div>
+                <p style="color: #92400e; margin: 0;">Bitte erstellen Sie zuerst einen Forecast in Schritt 3.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Sub-tabs for capacity
+            capacity_tabs = st.tabs(["📊 Outlook", "📈 Analytics", "💾 Export"])
+            
+            with capacity_tabs[0]:
+                demand_outlook_section()
+            
+            with capacity_tabs[1]:
+                analytics_section(capacity_config)
+            
+            with capacity_tabs[2]:
+                export_section()
     
-    with tab5:
-        demand_outlook_section()
-    
-    with tab6:
-        analytics_section(capacity_config)
-    
-    with tab7:
-        review_forecasts_section()
-    
-    with tab8:
-        call_center_management_section()
-    
-    with tab9:
-        api_documentation_section()
-    
-    with tab10:
-        export_section()
+    # ========== ADDITIONAL FEATURES ==========
+    with main_tabs[4]:
+        st.markdown("""
+        <div class="card-elevated">
+            <div class="card-header">
+                <div class="card-icon pink">📊</div>
+                <div>
+                    <h3 class="card-title">Weitere Funktionen</h3>
+                    <p class="card-subtitle">Administration, Call-Center und API</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        extra_tabs = st.tabs(["🏢 Call-Center", "📚 API Docs"])
+        
+        with extra_tabs[0]:
+            call_center_management_section()
+        
+        with extra_tabs[1]:
+            api_documentation_section()
 
 
 def main():
